@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Add Listing | UIU Books</title><link rel="stylesheet" href="seller.css"></head>
+<body><nav><a class="brand" href="seller-dashboard.html">UIU Books <span>Marketplace</span></a><a href="seller-dashboard.html">Back to dashboard</a></nav>
+<main class="shell"><form id="listingForm" class="form-card"><p class="eyebrow">NEW LISTING</p><h1>Add a textbook</h1><p>Provide accurate details. The Admin will review this listing before publication.</p><div class="form-grid">
+  <label class="full">Book title<input id="title" required></label><label>Course code<input id="courseCode" placeholder="CSE-3201" required></label>
+  <label>Department<select id="department"><option>CSE</option><option>EEE</option><option>BBA</option><option>Mathematics</option></select></label>
+  <label>Condition<select id="condition"><option>New</option><option>Like New</option><option>Good</option><option>Fair</option></select></label>
+  <label>Price (BDT)<input id="price" type="number" min="1" required></label><label class="full">Description<textarea id="description" required></textarea></label>
+  <button class="primary full" type="submit">Submit for approval</button>
+</div></form></main><script src="seller.js"></script></body></html>
