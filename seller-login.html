@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seller Login | UIU Books</title>
+  <link rel="stylesheet" href="seller.css">
+</head>
+<body class="auth-page">
+  <main class="auth-card">
+    <a class="brand" href="index.html">UIU Books <span>Marketplace</span></a>
+    <p class="eyebrow">SELLER PORTAL</p>
+    <h1>Welcome back</h1>
+    <p>Sign in with your UIU email to manage listings and sales.</p>
+    <form onsubmit="event.preventDefault(); window.location.href='seller-dashboard.html'">
+      <label>UIU email<input type="email" placeholder="seller@uiu.ac.bd" required></label>
+      <label>Password<input type="password" placeholder="••••••••" required></label>
+      <button class="primary" type="submit">Sign in</button>
+    </form>
+    <button class="secondary" onclick="sessionStorage.setItem('bookbridgeRole','seller'); location.href='seller-dashboard.html'">Demo login as Seller</button>
+  </main>
+</body>
+</html>

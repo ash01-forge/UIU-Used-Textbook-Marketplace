@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Seller Dashboard | UIU Books</title>
+  <link rel="stylesheet" href="seller.css">
+</head>
+<body>
+  <nav><a class="brand" href="index.html">UIU Books <span>Marketplace</span></a><div><a href="add-listing.html">Add listing</a><a href="seller-sales.html">Sales history</a></div></nav>
+  <main class="shell">
+    <header class="hero"><div><p class="eyebrow">SELLER DASHBOARD</p><h1>Hello, Rafiul</h1><p>Manage your textbook listings and campus sales.</p></div><a class="primary link-button" href="add-listing.html">+ Add new listing</a></header>
+    <section class="stats">
+      <article><span>Total listings</span><strong id="totalListings">1</strong></article>
+      <article><span>Active listings</span><strong id="activeListings">00</strong></article>
+      <article><span>Books sold</span><strong>1</strong></article>
+      <article><span>Total revenue</span><strong>৳450</strong></article>
+      <article><span>Seller rating</span><strong>4.8</strong></article>
+    </section>
+    <section class="panel"><div class="panel-head"><div><h2>My listings</h2><p>New submissions remain pending until Admin approval.</p></div></div>
+      <div class="table-wrap"><table><thead><tr><th>Book</th><th>Course</th><th>Price</th><th>Condition</th><th>Status</th></tr></thead><tbody id="sellerListings"><tr><td>Data Structures and Algorithms</td><td>CSE-2101</td><td>৳450</td><td>Like New</td><td><span class="badge sold">Sold</span></td></tr></tbody></table></div>
+    </section>
+  </main>
+  <script src="seller.js"></script>
+</body>
+</html>
