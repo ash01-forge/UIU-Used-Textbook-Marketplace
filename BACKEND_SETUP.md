@@ -125,12 +125,13 @@ The seed file `database/bookbridge.sql` includes ready-to-use demo accounts:
 Run Apache and MySQL, then open the project through `http://localhost/UIU-Used-Textbook-Marketplace/`. Do not use Live Server for authentication: PHP endpoints and the session cookie require the XAMPP origin.
 
 - Sign in from the main marketplace or `seller-login.html`; the server session and returned role determine the destination.
+- Use the root app's **Admin Portal** route to sign in as an administrator. The server-returned role sends authorized admins to `admin-dashboard.html`; direct visits to that page require a valid admin session.
 - Create buyer or seller accounts at `register.html`. Admin self-registration is not available.
-- Buyer and seller dashboards restore the session from `api/auth/me.php`, show the server's account name, and provide a server-backed sign-out action.
-- The Admin screen is an internal state in the compiled React app, not a URL route. Admin sign-in restores the authenticated session and displays its status, but cannot deep-link to that screen without the original app source/router.
+- Buyer, seller, and admin pages restore the session from `api/auth/me.php`, display the server's account name, and provide a server-backed sign-out action. Guests are sent to sign-in; a buyer or seller cannot open the admin page.
+- Admin dashboard counts, listing moderation, category management, and completed-sales reports use the admin APIs. Revenue is unavailable because completed purchases do not store transaction-time prices.
 - If PHP or the API is unavailable, the browse demo remains visible and authentication displays an error; it never substitutes a fake login.
 
-Dashboard figures, listing workflows, purchase requests, messaging, and admin management remain demo UI until their respective APIs are implemented. Authentication does not make those marketplace modules persistent or server-backed.
+Buyer/seller marketplace dashboard figures, purchase requests, messaging, and other modules remain demo UI until their respective APIs are implemented. Authentication does not make those marketplace modules persistent or server-backed. Admin user-management actions are not part of the current API contract.
 
 ## 8. Running Backend Tests (CLI Only)
 
