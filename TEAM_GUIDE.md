@@ -6,12 +6,12 @@ Welcome team! This document defines the engineering conventions, module ownershi
 
 ## 1. Team Ownership & Responsibilities
 
-| Member  | Module / Directory Responsibility                                    | Scope Description |
-| :------ | :------------------------------------------------------------------- | :---------------- |
-| **Adeeb**  | `config/`, `includes/`, `database/`, `api/auth/`, `api/admin/`  | Shared foundation, session & RBAC helpers, CSRF protection, database schema & migrations, admin APIs, and frontend integration. **Only Adeeb edits the compiled `app.js` bundle.** |
-| **Tashin** | `api/marketplace/`                                                  | Guest & Buyer public browse, search by keyword/course code, department/subject/type filters, public listing details. |
-| **Labib**  | `api/seller/`                                                       | Seller dashboard metrics, submitting listings, editing listings, marking sold, and seller sales history. |
-| **Tanvir** | `api/buyer/`, `api/messages/`, `api/reviews/`                       | Buyer dashboard, wishlists, purchase request creation/cancellation, campus messaging chat, and 1-5 star reviews. |
+| Member     | Module / Directory Responsibility                              | Scope Description                                                                                                                                                                  |
+| :--------- | :------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Adeeb**  | `config/`, `includes/`, `database/`, `api/auth/`, `api/admin/` | Shared foundation, session & RBAC helpers, CSRF protection, database schema & migrations, admin APIs, and frontend integration. **Only Adeeb edits the compiled `app.js` bundle.** |
+| **Tashin** | `api/marketplace/`                                             | Guest & Buyer public browse, search by keyword/course code, department/subject/type filters, public listing details.                                                               |
+| **Labib**  | `api/seller/`                                                  | Seller dashboard metrics, submitting listings, editing listings, marking sold, and seller sales history.                                                                           |
+| **Tanvir** | `api/buyer/`, `api/messages/`, `api/reviews/`                  | Buyer dashboard, wishlists, purchase request creation/cancellation, campus messaging chat, and 1-5 star reviews.                                                                   |
 
 > [!IMPORTANT]
 > **Frontend Preservation Rule:**
@@ -23,14 +23,15 @@ Welcome team! This document defines the engineering conventions, module ownershi
 
 Each team member works in their own dedicated branch. All changes are merged into `backend-development` via Pull Request — **never directly to `main`**.
 
-| Member  | Branch Name          | Targets              |
-| :------ | :------------------- | :------------------- |
-| Adeeb   | `backend/adeeb`      | `backend-development` |
-| Tashin  | `backend/tashin`     | `backend-development` |
-| Labib   | `backend/labib`      | `backend-development` |
-| Tanvir  | `backend/tanvir`     | `backend-development` |
+| Member | Branch Name      | Targets               |
+| :----- | :--------------- | :-------------------- |
+| Adeeb  | `backend/adeeb`  | `backend-development` |
+| Tashin | `backend/tashin` | `backend-development` |
+| Labib  | `backend/labib`  | `backend-development` |
+| Tanvir | `backend/tanvir` | `backend-development` |
 
 ### Branch workflow (step-by-step):
+
 ```bash
 # 1. Always start from a fresh copy of backend-development
 git checkout backend-development
@@ -62,6 +63,7 @@ git push origin backend/tashin
 2. **PDO with Prepared Statements (Mandatory):**
    - **Never** concatenate user input into SQL queries.
    - Always use prepared statements with placeholders (`?` or `:name`).
+
    ```php
    // Correct PDO prepared statement example:
    $db = getDbConnection();
@@ -72,6 +74,7 @@ git push origin backend/tashin
 
 3. **Standardized JSON Responses:**
    - Always use the response helpers:
+
    ```php
    require_once __DIR__ . '/../../includes/response.php';
 
@@ -83,6 +86,7 @@ git push origin backend/tashin
    ```
 
 4. **Authentication & Role Guards:**
+
    ```php
    require_once __DIR__ . '/../../includes/auth.php';
 
@@ -95,6 +99,7 @@ git push origin backend/tashin
    ```
 
 5. **CSRF Validation on State Modifications:**
+
    ```php
    require_once __DIR__ . '/../../includes/csrf.php';
 
@@ -167,7 +172,9 @@ Use this **only** if you already had a `bookbridge_db` created before the backen
 ## 6. Marketplace Business Rules & State Transitions
 
 ### A. Listing Lifecycle & Admin Approval
+
 A listing can exist in one of five explicit states:
+
 1. `pending_approval`: Newly created by a seller. Hidden from the public marketplace.
 2. `available`: Reviewed and approved by Admin. Live and visible to guests and buyers.
 3. `changes_requested`: Admin requested changes. The `admin_feedback` column contains the required changes.
@@ -196,15 +203,18 @@ A listing can exist in one of five explicit states:
 ```
 
 ### B. Seller Ownership Rule
+
 - A seller can **only** edit or update listings where `seller_id = $_SESSION['user']['id']`.
 - Never trust an `id` or `seller_id` passed in the request body without verifying ownership in the database.
 
 ### C. Cash on Meet Only Policy
+
 - BookBridge operates strictly on **Cash on Meet**.
 - No online gateway or advance payments (bKash/Nagad) are processed in the backend.
 - The `purchase_requests.payment_method` column is an `ENUM('cash_on_meet')` — the database itself enforces the policy.
 
 ### D. Purchase Requests & Sold Status Transitions
+
 1. Buyer submits request (`status: 'pending'`).
 2. Seller reviews the request:
    - **Accepts:** `status: 'accepted'`. Buyer and seller proceed to meet.
@@ -214,12 +224,22 @@ A listing can exist in one of five explicit states:
    - Updates: `listings.status = 'sold'`, `purchase_requests.status = 'completed'`, `purchase_requests.completed_at = NOW()`.
 
 ### E. Message & Review Eligibility Rules
+
 - **Messaging:** Any logged-in user can message regarding an active listing.
 - **Review:** Only a buyer with `purchase_requests.status = 'completed'` may submit a 1-5 star review.
+
+### F. Admin API Rules
+
+- Admin endpoints require `requireRole('admin')`; every state-changing request must validate CSRF.
+- Listing moderation accepts only `pending_approval` listings. Reviewer ID comes from the session and `reviewed_at` is recorded with the decision. Reject and change requests require feedback.
+- Category updates preserve department-subject links and matching labels. Deletion is blocked while users, child subjects, or listings reference the category.
+- The current schema does not snapshot completed transaction prices, so reports must not calculate realized revenue from current listing prices.
+- User listing, role changes, account deletion, and password-reset APIs are not defined in this milestone; do not invent them.
 
 ---
 
 ## 7. Database Coordination
+
 - All database modifications must be accompanied by a numbered script in `database/migrations/`.
 - Adeeb reviews and approves any modifications to shared tables.
 - **Never** run `DROP TABLE` or `TRUNCATE` in migrations.
