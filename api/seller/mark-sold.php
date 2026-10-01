@@ -65,6 +65,15 @@ try {
         ]);
     }
 
+    // Complete an accepted meetup through the shared request action endpoint.
+    // Otherwise marking it sold here prevents that endpoint from completing it.
+    $accepted = $db->prepare("SELECT id FROM purchase_requests WHERE listing_id = ? AND status = 'accepted' LIMIT 1");
+    $accepted->execute([$listingId]);
+    if ($accepted->fetch()) {
+        $db->rollBack();
+        sendErrorResponse('An accepted purchase request exists. Use Complete meetup in Purchase requests, or decline the request first.', 409);
+    }
+
     // Conditional atomic update ensuring previous status was strictly 'available'
     $updateStmt = $db->prepare("UPDATE listings SET status = 'sold', updated_at = NOW() WHERE id = ? AND seller_id = ? AND status = 'available'");
     $updateStmt->execute([$listingId, $sellerId]);
