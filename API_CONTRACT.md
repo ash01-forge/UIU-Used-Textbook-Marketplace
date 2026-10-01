@@ -260,18 +260,18 @@ All three marketplace endpoints accept GET without authentication. Other methods
 
 `listings.php` retains `data.total` and `data.listings`, adding `data.pagination` with integer `page`, `per_page`, `total`, and `total_pages`. Empty results use `listings: []` and zero total pages. Beyond-last-page requests return an empty array with the actual total. Defaults: page 1, per_page 20, sort created_at, direction desc.
 
-| Parameter | Rules |
-| --- | --- |
-| search | Up to 100 UTF-8 characters; literal substring in title, author, course_code, subject; SQL wildcard characters are literal |
-| department, subject | Up to 100 characters; exact labels using database collation; omitted/empty means no filter |
-| type | Textbook, Notes, Lab Manual; omitted/empty means all |
-| condition | New, Like New, Good, Fair, Poor; omitted/empty means all |
-| category_id | Positive integer through 2147483647; matches stored listings.category_id directly |
-| min_price, max_price | Inclusive nonnegative decimal through 99999999.99, at most two fractional digits; minimum must not exceed maximum |
-| page | Integer 1..1000000 |
-| per_page | Integer 1..100 |
-| sort | created_at, price, title |
-| direction | asc, desc; ties resolved by listing ID in the same direction |
+| Parameter            | Rules                                                                                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| search               | Up to 100 UTF-8 characters; literal substring in title, author, course_code, subject; SQL wildcard characters are literal |
+| department, subject  | Up to 100 characters; exact labels using database collation; omitted/empty means no filter                                |
+| type                 | Textbook, Notes, Lab Manual; omitted/empty means all                                                                      |
+| condition            | New, Like New, Good, Fair, Poor; omitted/empty means all                                                                  |
+| category_id          | Positive integer through 2147483647; matches stored listings.category_id directly                                         |
+| min_price, max_price | Inclusive nonnegative decimal through 99999999.99, at most two fractional digits; minimum must not exceed maximum         |
+| page                 | Integer 1..1000000                                                                                                        |
+| per_page             | Integer 1..100                                                                                                            |
+| sort                 | created_at, price, title                                                                                                  |
+| direction            | asc, desc; ties resolved by listing ID in the same direction                                                              |
 
 Filters combine with AND. Send omitted/empty type or department instead of the demo UI's `all` sentinel. Unknown query keys are ignored. Malformed arrays are rejected for supported parameters.
 
@@ -281,7 +281,7 @@ Browse rows explicitly expose id, category_id, title, author, edition, course_co
 
 `categories.php` optionally accepts department (up to 100 characters). It returns `data.categories` (id/name/type/department), `departments` (id/name), `subjects` (id/name/departments array), `item_types`, `conditions`, `sort_fields`, and `sort_directions`. These are taxonomy/filter options and may have no current matching listings.
 
-For migrated categories, a stored department is authoritative. For fresh categories without department columns (or an unassigned subject), parent labels are inferred only from exact subject names on available listings. Unmapped subjects have an empty departments array; no Cartesian department-subject mapping is invented. The optional department filter excludes unrelated/unmapped subjects. Fresh seed listing category IDs often point to a Department, so category_id and subject filters are intentionally distinct. This endpoint does not invent category IDs for listing subjects missing from the taxonomy.
+Migration `database/migrations/002_category_relationship_columns.sql` adds nullable category relationship fields required by category CRUD. Before it is applied on a fresh schema, this public endpoint still works by inferring parents only from exact subject names on available listings. Unmapped or ambiguous subjects remain unassigned; no Cartesian department-subject mapping is invented. The optional department filter excludes unrelated/unmapped subjects. Fresh seed listing category IDs often point to a Department, so `category_id` and subject filters are intentionally distinct. This endpoint does not invent category IDs for listing subjects missing from the taxonomy.
 
 Example requests:
 
@@ -293,26 +293,26 @@ GET /api/marketplace/categories.php?department=CSE
 
 Validation: `C:\xampp\php\php.exe tests\marketplace_test.php`. This CLI-only runner creates tagged disposable fixtures and cleans only its IDs. Do not run it concurrently with real database edits; it compares original table contents before and after. Auto-increment counters can advance. It never resets tables, reseeds demo records, or runs migrations.
 
-Frontend integration remains Adeeb's responsibility; these APIs do not replace the existing demo UI data automatically. Cash on Meet only; no transaction writes are part of this module.
+The guest browse and public listing detail pages use these read-only endpoints. Cash on Meet only; no transaction writes are part of this module.
 
 ### 3.3 Seller Management (`api/seller/` - Owner: Labib)
 
 Every seller endpoint requires an authenticated session with `role === 'seller'`. Guests receive HTTP 401; users with role `'buyer'` or `'admin'` receive HTTP 403. Every state-changing request (`POST`, `PUT`, `DELETE`) requires `X-CSRF-Token` (or a `csrf_token` body field). Sellers cannot view, modify, mark sold, or delete listings belonging to other sellers (strict cross-seller ownership enforcement yields HTTP 403). Responses use the standardized JSON envelope.
 
-| Method   | Endpoint                          | Access | Description                                                           |
-| :------- | :-------------------------------- | :----- | :-------------------------------------------------------------------- |
-| `GET`    | `/api/seller/dashboard.php`       | Seller | Real-time seller metrics (listings count by status, revenue, rating)  |
-| `GET`    | `/api/seller/listings.php`        | Seller | Filtered, paginated list of seller's own listings                     |
-| `GET`    | `/api/seller/listings.php?id={id}`| Seller | Full details of a specific listing owned by seller                    |
-| `POST`   | `/api/seller/add-listing.php`     | Seller | Submit a new textbook/notes listing (forced status: `pending_approval`)|
-| `PUT`    | `/api/seller/edit-listing.php`    | Seller | Update an existing listing owned by seller                            |
-| `POST`   | `/api/seller/mark-sold.php`       | Seller | Mark an available listing as `sold` (does not mutate purchase requests)|
-| `POST`   | `/api/seller/mark-unsold.php`     | Seller | Revert a sold listing back to `available`                             |
-| `POST`   | `/api/seller/delete-listing.php`  | Seller | Delete an unreferenced listing owned by seller                        |
-| `GET`    | `/api/seller/sales-history.php`   | Seller | View completed campus sales history with buyer info                   |
-| `GET`    | `/api/seller/profile.php`         | Seller | View seller profile, student ID, and summary stats                    |
-| `PUT`    | `/api/seller/profile.php`         | Seller | Update seller name, phone, or avatar (allowlisted fields only)        |
-| `POST`   | `/api/seller/upload-image.php`    | Seller | Upload a textbook cover photo (`multipart/form-data`)                 |
+| Method | Endpoint                           | Access | Description                                                             |
+| :----- | :--------------------------------- | :----- | :---------------------------------------------------------------------- |
+| `GET`  | `/api/seller/dashboard.php`        | Seller | Real-time seller metrics (listings count by status, revenue, rating)    |
+| `GET`  | `/api/seller/listings.php`         | Seller | Filtered, paginated list of seller's own listings                       |
+| `GET`  | `/api/seller/listings.php?id={id}` | Seller | Full details of a specific listing owned by seller                      |
+| `POST` | `/api/seller/add-listing.php`      | Seller | Submit a new textbook/notes listing (forced status: `pending_approval`) |
+| `PUT`  | `/api/seller/edit-listing.php`     | Seller | Update an existing listing owned by seller                              |
+| `POST` | `/api/seller/mark-sold.php`        | Seller | Mark an available listing as `sold` (does not mutate purchase requests) |
+| `POST` | `/api/seller/mark-unsold.php`      | Seller | Revert a sold listing back to `available`                               |
+| `POST` | `/api/seller/delete-listing.php`   | Seller | Delete an unreferenced listing owned by seller                          |
+| `GET`  | `/api/seller/sales-history.php`    | Seller | View completed campus sales history with buyer info                     |
+| `GET`  | `/api/seller/profile.php`          | Seller | View seller profile, student ID, and summary stats                      |
+| `PUT`  | `/api/seller/profile.php`          | Seller | Update seller name, phone, or avatar (allowlisted fields only)          |
+| `POST` | `/api/seller/upload-image.php`     | Seller | Upload a textbook cover photo (`multipart/form-data`)                   |
 
 #### 3.3.1 Seller Dashboard
 
@@ -369,6 +369,7 @@ Every seller endpoint requires an authenticated session with `role === 'seller'`
 ```
 
 Response (HTTP 201 Created):
+
 ```json
 {
   "success": true,
@@ -391,6 +392,7 @@ Response (HTTP 201 Created):
 #### 3.3.4 Edit Listing
 
 `PUT /api/seller/edit-listing.php` updates an owned listing. Allowlisted editable fields: `title`, `author`, `edition`, `course_code`, `department`, `subject`, `item_type`, `condition_type`, `price`, `description`, `image_url`, `category_id`.
+
 - Editing a listing in `changes_requested` or `rejected` automatically transitions its status back to `pending_approval` for re-moderation.
 - Sold listings cannot be edited directly (returns HTTP 409 Conflict).
 
@@ -402,6 +404,7 @@ Response (HTTP 201 Created):
 #### 3.3.6 Delete Listing
 
 `POST /api/seller/delete-listing.php` (or `DELETE`): Accepts `{"id": 1}`.
+
 - Deleting a listing that is `sold` or has completed purchase records is blocked with HTTP 409 Conflict to preserve transaction integrity.
 - Deleting a listing with active proposals (`pending` or `accepted`) returns HTTP 409 Conflict.
 - On safe deletion, unlinks associated local cover image from `uploads/listings/` and deletes the database record.
@@ -422,7 +425,7 @@ Response (HTTP 201 Created):
         "title": "Data Structures and Algorithms",
         "course_code": "CSE-2101",
         "department": "CSE",
-        "price": 450.00,
+        "price": 450.0,
         "status": "sold",
         "buyer_name": "Zahir Raihan",
         "buyer_email": "buyer@uiu.ac.bd",
@@ -443,6 +446,7 @@ Response (HTTP 201 Created):
 #### 3.3.9 Secure Image Upload
 
 `POST /api/seller/upload-image.php`:
+
 - Content-Type: `multipart/form-data`, file field: `image`.
 - Header: `X-CSRF-Token: <token>`.
 - Allowed MIME types: `image/jpeg` (.jpg), `image/png` (.png), `image/webp` (.webp). Verified using file content inspection (`finfo`), not client extensions.
@@ -474,22 +478,24 @@ Response (HTTP 201 Created):
 
 ### 3.4 Buyer & Transactions (`api/buyer/` - Owner: Tanvir)
 
-| Method | Endpoint | Access | Description |
-| :----- | :------- | :----- | :---------- |
-| `GET`  | `/api/buyer/dashboard.php` | Buyer | Buyer stats (wishlist count, active requests, completed purchases, money saved), recommendations, recent requests |
-| `GET`  | `/api/buyer/profile.php` | Buyer | Retrieves current buyer profile details |
-| `POST` / `PUT` | `/api/buyer/profile.php` | Buyer | Updates permitted profile fields (`full_name`, `phone`, `student_id`, `avatar_url`) (CSRF required) |
-| `GET`  | `/api/buyer/wishlist.php` | Buyer | Listings saved by buyer |
-| `POST` | `/api/buyer/wishlist.php` | Buyer | Add, remove, or toggle listing in wishlist (CSRF required) |
-| `POST` | `/api/buyer/purchase-request.php` | Buyer | Submit Cash on Meet purchase request (CSRF required) |
-| `GET`  | `/api/buyer/my-requests.php` | Buyer | List of buyer's purchase requests with optional `status` filter |
-| `GET`  | `/api/buyer/request-detail.php?id={id}` | Buyer / Seller | Full purchase request details, listing info, meetup data, review status (Participant isolated) |
-| `POST` | `/api/buyer/cancel-request.php` | Buyer | Cancel buyer's own pending/accepted request (CSRF required) |
-| `GET`  | `/api/buyer/seller-requests.php` | Seller | List purchase requests received for seller's listings |
-| `POST` | `/api/buyer/seller-request-action.php` | Seller | Seller accepts, declines, or completes request (concurrency protected, CSRF required) |
+| Method         | Endpoint                                | Access         | Description                                                                                                       |
+| :------------- | :-------------------------------------- | :------------- | :---------------------------------------------------------------------------------------------------------------- |
+| `GET`          | `/api/buyer/dashboard.php`              | Buyer          | Buyer stats (wishlist count, active requests, completed purchases, money saved), recommendations, recent requests |
+| `GET`          | `/api/buyer/profile.php`                | Buyer          | Retrieves current buyer profile details                                                                           |
+| `POST` / `PUT` | `/api/buyer/profile.php`                | Buyer          | Updates permitted profile fields (`full_name`, `phone`, `student_id`, `avatar_url`) (CSRF required)               |
+| `GET`          | `/api/buyer/wishlist.php`               | Buyer          | Listings saved by buyer                                                                                           |
+| `POST`         | `/api/buyer/wishlist.php`               | Buyer          | Add, remove, or toggle listing in wishlist (CSRF required)                                                        |
+| `POST`         | `/api/buyer/purchase-request.php`       | Buyer          | Submit Cash on Meet purchase request (CSRF required)                                                              |
+| `GET`          | `/api/buyer/my-requests.php`            | Buyer          | List of buyer's purchase requests with optional `status` filter                                                   |
+| `GET`          | `/api/buyer/request-detail.php?id={id}` | Buyer / Seller | Full purchase request details, listing info, meetup data, review status (Participant isolated)                    |
+| `POST`         | `/api/buyer/cancel-request.php`         | Buyer          | Cancel buyer's own pending/accepted request (CSRF required)                                                       |
+| `GET`          | `/api/buyer/seller-requests.php`        | Seller         | List purchase requests received for seller's listings                                                             |
+| `POST`         | `/api/buyer/seller-request-action.php`  | Seller         | Seller accepts, declines, or completes request (concurrency protected, CSRF required)                             |
 
 #### Purchase Request Payload (Strict Cash on Meet only):
+
 `POST /api/buyer/purchase-request.php` (Header: `X-CSRF-Token: <token>`)
+
 ```json
 {
   "listing_id": 1,
@@ -498,9 +504,11 @@ Response (HTTP 201 Created):
   "note": "Can meet during lunch break."
 }
 ```
-* Rules: Listing must be `status = 'available'`; requester cannot buy own listing; duplicate active requests rejected (422).
+
+- Rules: Listing must be `status = 'available'`; requester cannot buy own listing; duplicate active requests rejected (422).
 
 #### Purchase Request Status Transitions:
+
 ```
            [Buyer Submits: pending]
                      │
@@ -513,14 +521,17 @@ Response (HTTP 201 Created):
 ```
 
 #### Seller Request Action Payload:
+
 `POST /api/buyer/seller-request-action.php` (Header: `X-CSRF-Token: <token>`)
+
 ```json
 {
   "request_id": 3,
   "action": "accept" // Options: "accept", "decline", "complete"
 }
 ```
-* Rules:
+
+- Rules:
   - `accept`: Only pending requests on available listings. Only 1 accepted request allowed per listing.
   - `decline`: Allowed on pending or accepted requests.
   - `complete`: Concludes transaction. Marks listing as `sold`, request as `completed`, and auto-declines other pending requests.
@@ -529,17 +540,19 @@ Response (HTTP 201 Created):
 
 ### 3.5 Messaging & Reviews (Owner: Tanvir)
 
-| Method | Endpoint | Access | Description |
-| :----- | :------- | :----- | :---------- |
-| `GET`  | `/api/messages/conversations.php` | Authenticated | List conversation threads with latest message and unread counts |
-| `GET`  | `/api/messages/thread.php?with_user_id={id}` | Authenticated | Full chat history between users; automatically marks incoming messages read |
-| `POST` | `/api/messages/send.php` | Authenticated | Send a campus coordination message (CSRF required) |
-| `POST` | `/api/reviews/create.php` | Buyer | Submit a 1-5 star review for an eligible completed purchase (CSRF required) |
-| `GET`  | `/api/reviews/seller-reviews.php?seller_id={id}` | Public | Reviews and aggregate rating statistics for a seller |
-| `GET`  | `/api/reviews/my-reviews.php` | Buyer | List of reviews submitted by the logged-in buyer |
+| Method | Endpoint                                         | Access        | Description                                                                 |
+| :----- | :----------------------------------------------- | :------------ | :-------------------------------------------------------------------------- |
+| `GET`  | `/api/messages/conversations.php`                | Authenticated | List conversation threads with latest message and unread counts             |
+| `GET`  | `/api/messages/thread.php?with_user_id={id}`     | Authenticated | Full chat history between users; automatically marks incoming messages read |
+| `POST` | `/api/messages/send.php`                         | Authenticated | Send a campus coordination message (CSRF required)                          |
+| `POST` | `/api/reviews/create.php`                        | Buyer         | Submit a 1-5 star review for an eligible completed purchase (CSRF required) |
+| `GET`  | `/api/reviews/seller-reviews.php?seller_id={id}` | Public        | Reviews and aggregate rating statistics for a seller                        |
+| `GET`  | `/api/reviews/my-reviews.php`                    | Buyer         | List of reviews submitted by the logged-in buyer                            |
 
 #### Send Message Payload:
+
 `POST /api/messages/send.php` (Header: `X-CSRF-Token: <token>`)
+
 ```json
 {
   "receiver_id": 2,
@@ -549,7 +562,9 @@ Response (HTTP 201 Created):
 ```
 
 #### Submit Review Payload:
+
 `POST /api/reviews/create.php` (Header: `X-CSRF-Token: <token>`)
+
 ```json
 {
   "purchase_request_id": 2,
@@ -557,7 +572,8 @@ Response (HTTP 201 Created):
   "comment": "Punctual seller, textbook in excellent condition!"
 }
 ```
-* Rules: Request must have `status = 'completed'`; reviewer must be the buyer; duplicate reviews for the same purchase request are rejected (422); rating must be between 1 and 5.
+
+- Rules: Request must have `status = 'completed'`; reviewer must be the buyer; duplicate reviews for the same purchase request are rejected (422); rating must be between 1 and 5.
 
 ### 3.6 Admin Management (`api/admin/` - Owner: Adeeb)
 

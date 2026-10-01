@@ -47,6 +47,7 @@ http://localhost/UIU-Used-Textbook-Marketplace/
      ```
      C:\xampp\htdocs\UIU-Used-Textbook-Marketplace\database\migrations\001_align_to_target_schema.sql
      ```
+5. For either a fresh install or a migrated install, import `database/migrations/002_category_relationship_columns.sql` if Admin category management is needed. This adds nullable relationship columns without deleting or replacing existing values. Do not rerun migration 001 on a fresh install.
 
 ### Option B: Using MySQL Command Line
 
@@ -130,7 +131,8 @@ Run Apache and MySQL, then open the project through `http://localhost/UIU-Used-T
 - Buyer, seller, and admin pages restore the session from `api/auth/me.php`, display the server's account name, and provide a server-backed sign-out action. Guests are sent to sign-in; a buyer or seller cannot open the admin page.
 - Admin dashboard counts, listing moderation, category management, and completed-sales reports use the admin APIs. Revenue is unavailable because completed purchases do not store transaction-time prices.
 - Buyer dashboard metrics and recommendations, saved listings, purchase requests and cancellations, eligible reviews, messages, seller listings and moderation feedback, buyer request actions, seller reviews, and sales-history rows are loaded from their existing APIs. Revenue is not calculated from current listing prices when no sale-time snapshot exists.
-- The public marketplace listing endpoints described in the contract are not present under `api/marketplace/` in this checkout. Guest browse remains a demo and is not used as a source of buyer purchase actions; authenticated buyer recommendations come from `api/buyer/dashboard.php`.
+- Guest browse, search, department/subject/category/type/condition/price filters, sorting, pagination and public listing details use the read-only APIs under `api/marketplace/`. Buyer purchase actions remain session- and role-protected.
+- Fresh `bookbridge.sql` installs do not include the optional category `department`/`subject` relationship columns used by Admin category CRUD. Apply migration 002 when that functionality is required; it is additive and is not run automatically.
 - If PHP or an API is unavailable, connected screens show an error state and do not substitute fake API success or counts.
 
 Buyer savings are labeled estimated because the dashboard derives them from current listing prices. Seller sales history omits a sale-price column because transaction-time prices are not stored. Admin user-management actions are not part of the current API contract.

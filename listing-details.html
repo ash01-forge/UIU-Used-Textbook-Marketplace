@@ -6,12 +6,12 @@
 	<title>Listing Details | UIU Books</title>
 	<link rel="stylesheet" href="buyer.css">
 	<link rel="stylesheet" href="workflow.css">
-	<script defer src="auth.js?v=20261002-auth-v7"></script>
-	<script defer src="buyer.js?v=20261002-buyer-v1"></script>
-	<style>body[data-auth-checking] main{visibility:hidden}</style>
+	<link rel="stylesheet" href="marketplace.css">
+	<script defer src="auth.js?v=20261002-auth-v8"></script>
+	<script defer src="marketplace-detail.js?v=20261002-market-v1"></script>
 </head>
-<body data-auth-checking>
-	<nav><a class="brand" href="buyer-dashboard.html">UIU Books <small>Marketplace</small></a><a href="buyer-dashboard.html">Back to dashboard</a></nav>
+<body>
+	<nav><a class="brand" href="guest-home.html">UIU Books <small>Marketplace</small></a><a href="browse.html">Back to browse</a></nav>
 	<main class="shell">
 		<div id="listingDetailsLoading" class="workflow-loading">Loading listing…</div>
 		<div id="listingDetailsError" class="workflow-alert workflow-error" role="alert" hidden></div>
@@ -23,7 +23,9 @@
 				<p id="listingDetailAuthor"></p>
 				<p id="listingDetailDescription"></p>
 				<h2 id="listingDetailPrice"></h2>
-				<p><strong>Seller:</strong> <span id="listingDetailSeller"></span></p>
+				<p><strong>Seller:</strong> <span id="listingDetailSeller"></span> · <span id="listingDetailRating"></span></p>
+				<p id="listingActionNote" class="workflow-muted" hidden></p>
+				<div id="listingActionError" class="workflow-alert workflow-error" role="alert" hidden></div>
 				<div class="workflow-actions">
 					<a id="listingRequestLink" class="primary" href="#">Send buy request</a>
 					<button id="listingWishlistButton" class="secondary" type="button">Save to wishlist</button>

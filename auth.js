@@ -202,7 +202,7 @@
 
   function pageRoles() {
     const file = window.location.pathname.split("/").pop();
-    if (["buyer-dashboard.html", "listing-details.html", "purchase-request.html"].includes(file)) return ["buyer"];
+    if (["buyer-dashboard.html", "purchase-request.html"].includes(file)) return ["buyer"];
     if (["seller-dashboard.html", "add-listing.html", "seller-sales.html"].includes(file)) return ["seller"];
     if (file === "messages.html") return ["buyer", "seller"];
     if (file === "admin-dashboard.html") return ["admin"];
