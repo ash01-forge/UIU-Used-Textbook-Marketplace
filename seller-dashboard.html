@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Seller Dashboard | UIU Books</title>
   <link rel="stylesheet" href="seller.css">
+  <script defer src="auth.js?v=20261001-auth-v3"></script>
+  <style>body[data-auth-checking] main { visibility: hidden; }</style>
 </head>
-<body>
-  <nav><a class="brand" href="index.html">UIU Books <span>Marketplace</span></a><div><a href="add-listing.html">Add listing</a><a href="seller-sales.html">Sales history</a></div></nav>
+<body data-auth-checking>
+  <nav><a class="brand" href="index.html">UIU Books <span>Marketplace</span></a><div><a href="add-listing.html">Add listing</a><a href="seller-sales.html">Sales history</a><button type="button" class="secondary" data-auth-logout>Sign out</button></div></nav>
   <main class="shell">
-    <header class="hero"><div><p class="eyebrow">SELLER DASHBOARD</p><h1>Hello, Rafiul</h1><p>Manage your textbook listings and campus sales.</p></div><a class="primary link-button" href="add-listing.html">+ Add new listing</a></header>
+    <header class="hero"><div><p class="eyebrow">SELLER DASHBOARD</p><h1>Hello, Rafiul</h1><p>Manage your textbook listings and campus sales.</p><p style="font-size:13px;margin-top:8px">Dashboard metrics and listings are sample data; account identity is server-backed.</p></div><a class="primary link-button" href="add-listing.html">+ Add new listing</a></header>
     <section class="stats">
       <article><span>Total listings</span><strong id="totalListings">1</strong></article>
       <article><span>Active listings</span><strong id="activeListings">00</strong></article>
