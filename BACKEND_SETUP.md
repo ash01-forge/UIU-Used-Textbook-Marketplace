@@ -149,8 +149,18 @@ Open PowerShell or Command Prompt in the project root and run:
 C:\xampp\php\php.exe tests\auth_test.php
 ```
 
+Run the admin API integration suite separately:
+
+```powershell
+C:\xampp\php\php.exe tests\admin_test.php
+```
+
+The admin suite is CLI-only. It creates uniquely tagged temporary admin/buyer/seller users, category/listing fixtures, and a completed purchase request; it tracks and deletes only those fixture IDs at shutdown. It does not run migrations, reset tables, or alter demo users/categories/listings.
+
 ### Safety Features:
 
 - **CLI Only**: The test runner rejects browser/HTTP invocations before performing any operations.
 - **Disposable Accounts**: Uses dynamically generated temporary emails (`test_buyer_<uniq>@uiu.ac.bd`) and automatically cleans them up after completion.
 - **Data Preservation**: Baseline demo users (IDs 1, 2, 3) and existing database listings/categories are strictly preserved and never modified or deleted.
+
+The admin endpoint behavior and schema limitations are documented in `API_CONTRACT.md` under **Admin Management**. No user-management endpoint is included because no user operations are defined by the current contract.
