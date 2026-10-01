@@ -267,21 +267,54 @@ Below is the agreed endpoint contract to guide individual module development:
 
 | Method | Endpoint | Access | Description |
 | :----- | :------- | :----- | :---------- |
-| `GET`  | `/api/buyer/dashboard.php` | Buyer | Buyer stats (wishlist count, active requests, money saved) |
+| `GET`  | `/api/buyer/dashboard.php` | Buyer | Buyer stats (wishlist count, active requests, completed purchases, money saved), recommendations, recent requests |
+| `GET`  | `/api/buyer/profile.php` | Buyer | Retrieves current buyer profile details |
+| `POST` / `PUT` | `/api/buyer/profile.php` | Buyer | Updates permitted profile fields (`full_name`, `phone`, `student_id`, `avatar_url`) (CSRF required) |
 | `GET`  | `/api/buyer/wishlist.php` | Buyer | Listings saved by buyer |
-| `POST` | `/api/buyer/wishlist.php` | Buyer | Add or remove listing from wishlist |
-| `POST` | `/api/buyer/purchase-request.php`| Buyer | Submit Cash on Meet purchase request |
-| `GET`  | `/api/buyer/my-requests.php` | Buyer | List of buyer's purchase requests |
+| `POST` | `/api/buyer/wishlist.php` | Buyer | Add, remove, or toggle listing in wishlist (CSRF required) |
+| `POST` | `/api/buyer/purchase-request.php` | Buyer | Submit Cash on Meet purchase request (CSRF required) |
+| `GET`  | `/api/buyer/my-requests.php` | Buyer | List of buyer's purchase requests with optional `status` filter |
+| `GET`  | `/api/buyer/request-detail.php?id={id}` | Buyer / Seller | Full purchase request details, listing info, meetup data, review status (Participant isolated) |
+| `POST` | `/api/buyer/cancel-request.php` | Buyer | Cancel buyer's own pending/accepted request (CSRF required) |
+| `GET`  | `/api/buyer/seller-requests.php` | Seller | List purchase requests received for seller's listings |
+| `POST` | `/api/buyer/seller-request-action.php` | Seller | Seller accepts, declines, or completes request (concurrency protected, CSRF required) |
 
-#### Purchase Request Payload (Cash on Meet only):
+#### Purchase Request Payload (Strict Cash on Meet only):
+`POST /api/buyer/purchase-request.php` (Header: `X-CSRF-Token: <token>`)
 ```json
 {
   "listing_id": 1,
-  "meeting_location": "UIU Library",
+  "meeting_location": "UIU Library 3rd Floor",
   "preferred_date": "2026-10-05",
   "note": "Can meet during lunch break."
 }
 ```
+* Rules: Listing must be `status = 'available'`; requester cannot buy own listing; duplicate active requests rejected (422).
+
+#### Purchase Request Status Transitions:
+```
+           [Buyer Submits: pending]
+                     │
+         ┌───────────┴───────────┐
+         ▼ (Seller Accepts)      ▼ (Seller Declines / Buyer Cancels)
+    [accepted]              [declined / cancelled]
+         │
+         ▼ (Seller Marks Completed / Cash on Meet Concluded)
+    [completed]  ──>  [listings.status = 'sold']
+```
+
+#### Seller Request Action Payload:
+`POST /api/buyer/seller-request-action.php` (Header: `X-CSRF-Token: <token>`)
+```json
+{
+  "request_id": 3,
+  "action": "accept" // Options: "accept", "decline", "complete"
+}
+```
+* Rules:
+  - `accept`: Only pending requests on available listings. Only 1 accepted request allowed per listing.
+  - `decline`: Allowed on pending or accepted requests.
+  - `complete`: Concludes transaction. Marks listing as `sold`, request as `completed`, and auto-declines other pending requests.
 
 ---
 
@@ -289,12 +322,33 @@ Below is the agreed endpoint contract to guide individual module development:
 
 | Method | Endpoint | Access | Description |
 | :----- | :------- | :----- | :---------- |
-| `GET`  | `/api/messages/conversations.php` | Authenticated | List conversations and unread counts |
-| `GET`  | `/api/messages/thread.php?with_user_id={id}` | Authenticated | Chat history with specific user |
-| `POST` | `/api/messages/send.php` | Authenticated | Send a campus coordination message |
-| `POST` | `/api/reviews/create.php` | Buyer | Submit a 1-5 star review for a completed purchase |
+| `GET`  | `/api/messages/conversations.php` | Authenticated | List conversation threads with latest message and unread counts |
+| `GET`  | `/api/messages/thread.php?with_user_id={id}` | Authenticated | Full chat history between users; automatically marks incoming messages read |
+| `POST` | `/api/messages/send.php` | Authenticated | Send a campus coordination message (CSRF required) |
+| `POST` | `/api/reviews/create.php` | Buyer | Submit a 1-5 star review for an eligible completed purchase (CSRF required) |
+| `GET`  | `/api/reviews/seller-reviews.php?seller_id={id}` | Public | Reviews and aggregate rating statistics for a seller |
+| `GET`  | `/api/reviews/my-reviews.php` | Buyer | List of reviews submitted by the logged-in buyer |
 
----
+#### Send Message Payload:
+`POST /api/messages/send.php` (Header: `X-CSRF-Token: <token>`)
+```json
+{
+  "receiver_id": 2,
+  "listing_id": 1,
+  "message_text": "Hello! Is this textbook still available?"
+}
+```
+
+#### Submit Review Payload:
+`POST /api/reviews/create.php` (Header: `X-CSRF-Token: <token>`)
+```json
+{
+  "purchase_request_id": 2,
+  "rating": 5,
+  "comment": "Punctual seller, textbook in excellent condition!"
+}
+```
+* Rules: Request must have `status = 'completed'`; reviewer must be the buyer; duplicate reviews for the same purchase request are rejected (422); rating must be between 1 and 5.
 
 ### 3.6 Admin Management (`api/admin/` - Owner: Adeeb)
 
