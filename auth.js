@@ -3,6 +3,7 @@
 
   const projectBase = new URL(".", document.currentScript.src);
   const authBase = new URL("api/auth/", projectBase);
+  const apiBase = new URL("api/", projectBase);
   const root = document.getElementById("root");
   let csrfToken = null;
   let currentUser = null;
@@ -47,9 +48,9 @@
     notice.style.color = isError ? "#991b1b" : "#166534";
   }
 
-  async function request(endpoint, { method = "GET", body } = {}) {
+  async function request(endpoint, { method = "GET", body, base = authBase } = {}) {
     const headers = { Accept: "application/json" };
-    const options = { method, headers, credentials: "include" };
+    const options = { method, headers, credentials: "include", cache: "no-store" };
 
     if (body !== undefined) {
       headers["Content-Type"] = "application/json";
@@ -63,7 +64,7 @@
 
     let response;
     try {
-      response = await fetch(new URL(endpoint, authBase), options);
+      response = await fetch(new URL(endpoint, base), options);
     } catch {
       throw new Error("Authentication service is unavailable. Start XAMPP Apache/MySQL and open this project through localhost.");
     }
@@ -73,9 +74,16 @@
       if (response.status === 401) {
         currentUser = null;
         csrfToken = null;
+        if (dashboardRole()) {
+          hideUntilSessionIsChecked();
+          window.location.replace(pageUrl("index.html", "?auth=expired"));
+        }
       }
       const details = payload?.errors ? Object.values(payload.errors).join(" ") : "";
-      throw new Error([payload?.message || `Request failed (HTTP ${response.status}).`, details].filter(Boolean).join(" "));
+      const error = new Error([payload?.message || `Request failed (HTTP ${response.status}).`, details].filter(Boolean).join(" "));
+      error.status = response.status;
+      error.payload = payload;
+      throw error;
     }
     return payload;
   }
@@ -108,6 +116,7 @@
   function userDestination(user) {
     if (user.role === "buyer") return "buyer-dashboard.html";
     if (user.role === "seller") return "seller-dashboard.html";
+    if (user.role === "admin") return "admin-dashboard.html";
     return null;
   }
 
@@ -118,7 +127,7 @@
       window.location.assign(pageUrl(destination));
       return;
     }
-    window.location.assign(pageUrl("index.html", "?auth=admin"));
+    window.location.assign(pageUrl("index.html"));
   }
 
   function setSubmitting(form, submitting) {
@@ -162,6 +171,11 @@
 
   function addRegistrationLink() {
     if (!root) return;
+    root.querySelectorAll("*").forEach(element => {
+      if (element.childElementCount === 0 && element.textContent.trim() === "Manage categories and users") {
+        element.textContent = "Manage categories and subjects";
+      }
+    });
     root.querySelectorAll("button").forEach(button => {
       if (/^Demo Login/i.test(button.textContent.trim())) button.hidden = true;
     });
@@ -186,7 +200,23 @@
     const file = window.location.pathname.split("/").pop();
     if (file === "buyer-dashboard.html") return "buyer";
     if (file === "seller-dashboard.html") return "seller";
+    if (file === "admin-dashboard.html") return "admin";
     return null;
+  }
+
+  function configureAdminLogin() {
+    const query = new URLSearchParams(window.location.search);
+    if (window.location.pathname.split("/").pop() !== "seller-login.html" || query.get("portal") !== "admin") return;
+    document.title = "Admin Login | UIU Books";
+    const eyebrow = document.querySelector(".auth-card .eyebrow");
+    const heading = document.querySelector(".auth-card h1");
+    const description = document.querySelector(".auth-card > p:not(.eyebrow)");
+    if (eyebrow) eyebrow.textContent = "ADMIN PORTAL";
+    if (heading) heading.textContent = "Administrator sign in";
+    if (description) description.textContent = "Sign in with an authorized administrator account.";
+    if (query.get("auth") === "unavailable") {
+      showGlobalMessage("Your session could not be verified. Sign in again when the authentication service is available.", true);
+    }
   }
 
   function hideUntilSessionIsChecked() {
@@ -303,6 +333,7 @@
     const expectedRole = dashboardRole();
     const isAuthPage = file === "seller-login.html" || file === "register.html";
     const isHome = file === "" || file === "index.html";
+    configureAdminLogin();
 
     try {
       const result = await requestWithoutCsrf("me.php");
@@ -331,7 +362,9 @@
           return;
         }
         if (isHome && currentUser.role === "admin") {
-          showGlobalMessage(`Signed in as ${currentUser.full_name} (Admin). The admin view is an internal screen in the compiled app.`);
+          keepHidden = true;
+          window.location.replace(pageUrl("admin-dashboard.html"));
+          return;
         }
       }
     } catch (error) {
@@ -341,7 +374,18 @@
       }
       if (expectedRole && unauthenticated) {
         keepHidden = true;
-        window.location.replace(pageUrl("index.html", "?auth=expired"));
+        const loginUrl = expectedRole === "admin"
+          ? pageUrl("seller-login.html", "?portal=admin")
+          : pageUrl("index.html", "?auth=expired");
+        window.location.replace(loginUrl);
+        return;
+      }
+      if (expectedRole && !unauthenticated) {
+        keepHidden = true;
+        const loginUrl = expectedRole === "admin"
+          ? pageUrl("seller-login.html", "?portal=admin&auth=unavailable")
+          : pageUrl("index.html", "?auth=expired");
+        window.location.replace(loginUrl);
         return;
       }
       if (isHome && unauthenticated && hasAuthenticatedDashboardView()) {
@@ -367,5 +411,13 @@
     initialize();
   });
   hideUntilSessionIsChecked();
-  initialize();
+  const ready = initialize();
+  window.BookBridgeAuth = {
+    get currentUser() { return currentUser; },
+    request(endpoint, options = {}) {
+      return request(endpoint, { ...options, base: apiBase });
+    },
+    logout,
+    ready
+  };
 })();
