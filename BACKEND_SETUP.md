@@ -129,9 +129,11 @@ Run Apache and MySQL, then open the project through `http://localhost/UIU-Used-T
 - Create buyer or seller accounts at `register.html`. Admin self-registration is not available.
 - Buyer, seller, and admin pages restore the session from `api/auth/me.php`, display the server's account name, and provide a server-backed sign-out action. Guests are sent to sign-in; a buyer or seller cannot open the admin page.
 - Admin dashboard counts, listing moderation, category management, and completed-sales reports use the admin APIs. Revenue is unavailable because completed purchases do not store transaction-time prices.
-- If PHP or the API is unavailable, the browse demo remains visible and authentication displays an error; it never substitutes a fake login.
+- Buyer dashboard metrics and recommendations, saved listings, purchase requests and cancellations, eligible reviews, messages, seller listings and moderation feedback, buyer request actions, seller reviews, and sales-history rows are loaded from their existing APIs. Revenue is not calculated from current listing prices when no sale-time snapshot exists.
+- The public marketplace listing endpoints described in the contract are not present under `api/marketplace/` in this checkout. Guest browse remains a demo and is not used as a source of buyer purchase actions; authenticated buyer recommendations come from `api/buyer/dashboard.php`.
+- If PHP or an API is unavailable, connected screens show an error state and do not substitute fake API success or counts.
 
-Buyer/seller marketplace dashboard figures, purchase requests, messaging, and other modules remain demo UI until their respective APIs are implemented. Authentication does not make those marketplace modules persistent or server-backed. Admin user-management actions are not part of the current API contract.
+Buyer savings are labeled estimated because the dashboard derives them from current listing prices. Seller sales history omits a sale-price column because transaction-time prices are not stored. Admin user-management actions are not part of the current API contract.
 
 ## 8. Running Backend Tests (CLI Only)
 

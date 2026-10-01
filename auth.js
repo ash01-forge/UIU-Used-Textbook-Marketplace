@@ -53,8 +53,12 @@
     const options = { method, headers, credentials: "include", cache: "no-store" };
 
     if (body !== undefined) {
-      headers["Content-Type"] = "application/json";
-      options.body = JSON.stringify(body);
+      if (body instanceof FormData) {
+        options.body = body;
+      } else {
+        headers["Content-Type"] = "application/json";
+        options.body = JSON.stringify(body);
+      }
     }
 
     if (method !== "GET") {
@@ -74,7 +78,7 @@
       if (response.status === 401) {
         currentUser = null;
         csrfToken = null;
-        if (dashboardRole()) {
+        if (pageRoles()) {
           hideUntilSessionIsChecked();
           window.location.replace(pageUrl("index.html", "?auth=expired"));
         }
@@ -196,12 +200,18 @@
     form.insertAdjacentElement("afterend", link);
   }
 
-  function dashboardRole() {
+  function pageRoles() {
     const file = window.location.pathname.split("/").pop();
-    if (file === "buyer-dashboard.html") return "buyer";
-    if (file === "seller-dashboard.html") return "seller";
-    if (file === "admin-dashboard.html") return "admin";
+    if (["buyer-dashboard.html", "listing-details.html", "purchase-request.html"].includes(file)) return ["buyer"];
+    if (["seller-dashboard.html", "add-listing.html", "seller-sales.html"].includes(file)) return ["seller"];
+    if (file === "messages.html") return ["buyer", "seller"];
+    if (file === "admin-dashboard.html") return ["admin"];
     return null;
+  }
+
+  function dashboardRole() {
+    const roles = pageRoles();
+    return roles?.length === 1 ? roles[0] : null;
   }
 
   function configureAdminLogin() {
@@ -330,7 +340,7 @@
     csrfToken = null;
 
     const file = window.location.pathname.split("/").pop();
-    const expectedRole = dashboardRole();
+    const expectedRoles = pageRoles();
     const isAuthPage = file === "seller-login.html" || file === "register.html";
     const isHome = file === "" || file === "index.html";
     configureAdminLogin();
@@ -340,13 +350,13 @@
       currentUser = result.data?.user || null;
       csrfToken = result.data?.csrf_token || null;
       if (currentUser) {
-        if (expectedRole && currentUser.role !== expectedRole) {
+        if (expectedRoles && !expectedRoles.includes(currentUser.role)) {
           const destination = userDestination(currentUser);
           keepHidden = true;
           window.location.replace(pageUrl(destination || "index.html"));
           return;
         }
-        if (expectedRole) {
+        if (expectedRoles) {
           updateDashboardIdentity(currentUser);
           document.body.removeAttribute("data-auth-checking");
           return;
@@ -372,17 +382,17 @@
       if (!unauthenticated) {
         showGlobalMessage(error.message || "Authentication service is unavailable.", true);
       }
-      if (expectedRole && unauthenticated) {
+      if (expectedRoles && unauthenticated) {
         keepHidden = true;
-        const loginUrl = expectedRole === "admin"
+        const loginUrl = expectedRoles.includes("admin")
           ? pageUrl("seller-login.html", "?portal=admin")
           : pageUrl("index.html", "?auth=expired");
         window.location.replace(loginUrl);
         return;
       }
-      if (expectedRole && !unauthenticated) {
+      if (expectedRoles && !unauthenticated) {
         keepHidden = true;
-        const loginUrl = expectedRole === "admin"
+        const loginUrl = expectedRoles.includes("admin")
           ? pageUrl("seller-login.html", "?portal=admin&auth=unavailable")
           : pageUrl("index.html", "?auth=expired");
         window.location.replace(loginUrl);
@@ -414,6 +424,19 @@
   const ready = initialize();
   window.BookBridgeAuth = {
     get currentUser() { return currentUser; },
+    async requireRole(roles) {
+      await ready;
+      const allowedRoles = Array.isArray(roles) ? roles : [roles];
+      if (!currentUser) {
+        window.location.replace(pageUrl("index.html", "?auth=expired"));
+        return null;
+      }
+      if (!allowedRoles.includes(currentUser.role)) {
+        routeUser(currentUser);
+        return null;
+      }
+      return currentUser;
+    },
     request(endpoint, options = {}) {
       return request(endpoint, { ...options, base: apiBase });
     },

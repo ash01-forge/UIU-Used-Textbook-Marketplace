@@ -1,1 +1,36 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Listing Details | UIU Books</title><link rel="stylesheet" href="buyer.css"></head><body><nav><a class="brand" href="buyer-dashboard.html">UIU Books <small>Marketplace</small></a><a href="buyer-dashboard.html">Back to dashboard</a></nav><main class="shell"><section class="panel detail-grid"><img src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800&h=800&fit=crop" alt="Data Structures textbook"><div><span class="tag">CSE-2101 · Textbook</span><h1>Data Structures and Algorithms</h1><p>Third edition by Cormen, Leiserson and Rivest. All pages are intact with minimal highlighting.</p><h2>৳450</h2><p><strong>Condition:</strong> Like New</p><p><strong>Seller:</strong> Rafiul Islam · 4.8/5</p><a class="primary" href="purchase-request.html">Send buy request</a><a class="secondary" href="messages.html">Message seller</a></div></section></main></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Listing Details | UIU Books</title>
+	<link rel="stylesheet" href="buyer.css">
+	<link rel="stylesheet" href="workflow.css">
+	<script defer src="auth.js?v=20261002-auth-v7"></script>
+	<script defer src="buyer.js?v=20261002-buyer-v1"></script>
+	<style>body[data-auth-checking] main{visibility:hidden}</style>
+</head>
+<body data-auth-checking>
+	<nav><a class="brand" href="buyer-dashboard.html">UIU Books <small>Marketplace</small></a><a href="buyer-dashboard.html">Back to dashboard</a></nav>
+	<main class="shell">
+		<div id="listingDetailsLoading" class="workflow-loading">Loading listing…</div>
+		<div id="listingDetailsError" class="workflow-alert workflow-error" role="alert" hidden></div>
+		<section id="listingDetailsContent" class="panel detail-grid" hidden>
+			<img id="listingDetailImage" alt="Listing cover" hidden>
+			<div>
+				<span id="listingDetailMeta" class="tag"></span>
+				<h1 id="listingDetailTitle">Listing</h1>
+				<p id="listingDetailAuthor"></p>
+				<p id="listingDetailDescription"></p>
+				<h2 id="listingDetailPrice"></h2>
+				<p><strong>Seller:</strong> <span id="listingDetailSeller"></span></p>
+				<div class="workflow-actions">
+					<a id="listingRequestLink" class="primary" href="#">Send buy request</a>
+					<button id="listingWishlistButton" class="secondary" type="button">Save to wishlist</button>
+					<a id="listingMessageLink" class="secondary" href="#" hidden>Message seller</a>
+				</div>
+			</div>
+		</section>
+	</main>
+</body>
+</html>

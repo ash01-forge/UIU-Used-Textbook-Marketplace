@@ -1,1 +1,37 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Purchase Request | UIU Books</title><link rel="stylesheet" href="buyer.css"></head><body><nav><a class="brand" href="buyer-dashboard.html">UIU Books <small>Marketplace</small></a><a href="listing-details.html">Back to listing</a></nav><main class="shell"><form id="purchaseForm" class="form-card"><p class="eyebrow">BUY REQUEST</p><h1>Request this textbook</h1><p>Data Structures and Algorithms · ৳450</p><label>Meeting place<select id="meeting"><option>UIU Main Gate</option><option>UIU Library</option><option>UIU Cafeteria</option></select></label><label>Preferred date<input id="date" type="date" required></label><label>Payment method<select id="payment"><option>Cash on Meet</option><option>bKash</option><option>Nagad</option></select></label><label>Message to seller<textarea id="note" placeholder="I would like to check the book before purchasing."></textarea></label><button class="primary" type="submit">Send request</button><p id="result" role="status"></p></form></main><script src="buyer.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Purchase Request | UIU Books</title>
+	<link rel="stylesheet" href="buyer.css">
+	<link rel="stylesheet" href="workflow.css">
+	<script defer src="auth.js?v=20261002-auth-v7"></script>
+	<script defer src="buyer.js?v=20261002-buyer-v1"></script>
+	<style>body[data-auth-checking] main{visibility:hidden}</style>
+</head>
+<body data-auth-checking>
+	<nav><a class="brand" href="buyer-dashboard.html">UIU Books <small>Marketplace</small></a><a href="buyer-dashboard.html">Back to dashboard</a></nav>
+	<main class="shell">
+		<form id="purchaseForm" class="form-card">
+			<p class="eyebrow">BUY REQUEST</p>
+			<h1>Request a listing</h1>
+			<p id="purchaseListingTitle">Loading listing…</p>
+			<strong id="purchaseListingPrice"></strong>
+			<div id="purchaseError" class="workflow-alert workflow-error" role="alert" hidden></div>
+			<div id="purchaseSuccess" class="workflow-alert workflow-success" role="status" hidden></div>
+			<label>Meeting place
+				<select id="meeting" required>
+					<option value="UIU Main Gate">UIU Main Gate</option>
+					<option value="UIU Library">UIU Library</option>
+					<option value="UIU Cafeteria">UIU Cafeteria</option>
+				</select>
+			</label>
+			<label>Preferred date<input id="date" type="date" required></label>
+			<p class="workflow-muted">Payment: Cash on Meet</p>
+			<label>Message to seller<textarea id="note" maxlength="1000" placeholder="Add a note for the seller (optional)."></textarea></label>
+			<button id="purchaseSubmit" class="primary" type="submit">Send request</button>
+		</form>
+	</main>
+</body>
+</html>
