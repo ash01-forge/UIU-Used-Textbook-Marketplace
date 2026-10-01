@@ -111,6 +111,7 @@ if (!empty($errors)) {
 }
 
 $db = getDbConnection();
+sellerValidateImageUrl($db, $imageUrl, $sellerId);
 
 // If category_id was provided, verify it exists
 if ($categoryId !== null) {

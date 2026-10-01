@@ -173,10 +173,10 @@
     pending.add(key);
     try {
       await auth.request(`seller/mark-${isSold ? "sold" : "unsold"}.php`, { method: "POST", body: { listing_id: listing.id } });
-      await Promise.all([loadListings(), loadDashboard()]);
+      await Promise.all([loadListings(), loadDashboard(), loadSellerRequests()]);
     } catch (error) {
+      if (error.status === 409) await Promise.all([loadListings(), loadDashboard(), loadSellerRequests()]);
       showError("#sellerListingsError", error);
-      if (error.status === 409) await Promise.all([loadListings(), loadDashboard()]);
     } finally {
       pending.delete(key);
     }
@@ -188,10 +188,10 @@
     pending.add(key);
     try {
       await auth.request("seller/delete-listing.php", { method: "POST", body: { listing_id: listing.id } });
-      await Promise.all([loadListings(), loadDashboard()]);
+      await Promise.all([loadListings(), loadDashboard(), loadSellerRequests()]);
     } catch (error) {
-      showError("#sellerListingsError", error);
       if (error.status === 409) await loadListings();
+      showError("#sellerListingsError", error);
     } finally {
       pending.delete(key);
     }
@@ -241,8 +241,8 @@
         const actions = document.createElement("div");
         actions.className = "workflow-actions";
         if (request.can_accept) actions.append(actionButton("Accept", () => requestAction(request, "accept"), "primary"));
-        if (request.can_decline) actions.append(actionButton("Decline", () => requestAction(request, "decline"), "secondary"));
-        if (request.can_complete) actions.append(actionButton("Complete meetup", () => requestAction(request, "complete"), "primary"));
+        if (["pending", "accepted"].includes(request.status)) actions.append(actionButton("Decline", () => requestAction(request, "decline"), "secondary"));
+        if (request.can_complete && request.listing_status === "available") actions.append(actionButton("Complete meetup", () => requestAction(request, "complete"), "primary"));
         if (request.buyer_id && ["accepted", "completed"].includes(request.status)) {
           const message = document.createElement("a");
           message.className = "secondary";
@@ -270,8 +270,8 @@
       await auth.request("buyer/seller-request-action.php", { method: "POST", body: { request_id: request.id, action } });
       await Promise.all([loadSellerRequests(), loadListings(), loadDashboard()]);
     } catch (error) {
-      showError("#sellerRequestsError", error);
       if (error.status === 409 || error.status === 422) await Promise.all([loadSellerRequests(), loadListings(), loadDashboard()]);
+      showError("#sellerRequestsError", error);
     } finally {
       pending.delete(key);
     }
@@ -428,6 +428,10 @@
     try {
       const data = await getData("seller/sales-history.php", { page: state.salesPage, per_page: 20 });
       const paging = data.pagination || { page: 1, total_pages: 1 };
+      if (state.salesPage > Math.max(1, paging.total_pages || 1)) {
+        state.salesPage = Math.max(1, paging.total_pages || 1);
+        return loadSales();
+      }
       state.salesPage = paging.page || state.salesPage;
       state.salesPages = Math.max(1, paging.total_pages || 1);
       const sales = Array.isArray(data.sales) ? data.sales : [];

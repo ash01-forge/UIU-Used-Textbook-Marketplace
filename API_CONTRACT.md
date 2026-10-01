@@ -395,10 +395,14 @@ Response (HTTP 201 Created):
 
 - Editing a listing in `changes_requested` or `rejected` automatically transitions its status back to `pending_approval` for re-moderation.
 - Sold listings cannot be edited directly (returns HTTP 409 Conflict).
+- Updates constrain the previously read status and timestamp. If either changes before the write, reload the listing after HTTP 409 rather than overwriting a newer moderation/sold transition.
+- Uploaded covers must exist under the listing upload directory and belong to the seller's session or own listings; an unchanged existing cover is retained. Remote HTTP/HTTPS demo covers remain supported.
 
 #### 3.3.5 Mark Sold & Mark Unsold
 
 - `POST /api/seller/mark-sold.php`: Accepts `{"id": 1}`. Only approved (`available`) listings can transition to `sold` using concurrency-safe conditional locking. Updates listing status to `sold`. In accordance with team module ownership, purchase-request status mutations belong strictly to Tanvir's buyer/transaction module.
+- Manual `mark-sold` returns HTTP 409 while an accepted purchase request exists. Use the existing `api/buyer/seller-request-action.php` with `action: complete` to finish the meetup, or decline the accepted request first. The seller module does not mutate request status.
+- The seller UI offers decline for both pending and accepted requests, matching the existing action API, and only shows Complete meetup for accepted requests on available listings. Status/action errors stay visible after refresh.
 - `POST /api/seller/mark-unsold.php`: Accepts `{"id": 1}`. Only `sold` listings can transition to `unsold` using concurrency-safe conditional locking. Reverts status back to `available`. Stale concurrent requests return HTTP 409 Conflict.
 
 #### 3.3.6 Delete Listing
@@ -407,11 +411,14 @@ Response (HTTP 201 Created):
 
 - Deleting a listing that is `sold` or has completed purchase records is blocked with HTTP 409 Conflict to preserve transaction integrity.
 - Deleting a listing with active proposals (`pending` or `accepted`) returns HTTP 409 Conflict.
-- On safe deletion, unlinks associated local cover image from `uploads/listings/` and deletes the database record.
+- Deletion checks are serialized with a listing row lock. The database deletion commits before optional cover cleanup.
+- Cover cleanup only targets generated direct image paths inside `uploads/listings/`, and keeps files referenced by another listing. The response includes `image_removed`; failed cleanup does not incorrectly report that the committed listing deletion failed.
 
 #### 3.3.7 Sales History
 
-`GET /api/seller/sales-history.php` returns completed transactions:
+`GET /api/seller/sales-history.php` returns completed purchase-request records plus currently sold listings with no completed request. Completed records remain visible after relisting; pagination counts joined history rows consistently. Manual sold records have `purchase_request_id: null` and `completed_at: null`, with `sold_at` as a listing-update timestamp rather than a transaction-completion timestamp. The returned `price` is the current listing price, not realized revenue or a historical transaction price. No sale-time price snapshot exists.
+
+Example completed transaction:
 
 ```json
 {
@@ -450,7 +457,8 @@ Response (HTTP 201 Created):
 - Content-Type: `multipart/form-data`, file field: `image`.
 - Header: `X-CSRF-Token: <token>`.
 - Allowed MIME types: `image/jpeg` (.jpg), `image/png` (.png), `image/webp` (.webp). Verified using file content inspection (`finfo`), not client extensions.
-- Maximum size: 2 MB.
+- Maximum size: 2 MB; empty files, invalid PHP upload metadata and unreadable images are rejected. The actual temporary file size and image content are checked.
+- Newly uploaded image URLs are registered to the authenticated seller's session for attachment validation. Uploading and saving remain separate requests; the form retains the uploaded URL for retry if saving fails. After session expiration, unattached images must be uploaded again.
 - Security: Filename is securely generated (`img_<hex>.ext`). Executable scripts and PHP execution are strictly disabled via `.htaccess` in `uploads/`.
 - Response (HTTP 201 Created):
   ```json

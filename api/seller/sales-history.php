@@ -19,8 +19,11 @@ $page = sellerQueryInt('page', 1, 1, 1000000);
 $perPage = sellerQueryInt('per_page', 20, 1, 100);
 $offset = ($page - 1) * $perPage;
 
-// Count total sold listings for this seller
-$countStmt = $db->prepare("SELECT COUNT(*) FROM listings WHERE seller_id = ? AND status = 'sold'");
+// Count the same joined records as the paginated query. Keep completed sales
+// visible even after the listing is relisted.
+$countStmt = $db->prepare("SELECT COUNT(*) FROM listings l
+    LEFT JOIN purchase_requests pr ON l.id = pr.listing_id AND pr.status = 'completed' AND pr.seller_id = l.seller_id
+    WHERE l.seller_id = ? AND (l.status = 'sold' OR pr.id IS NOT NULL)");
 $countStmt->execute([$sellerId]);
 $total = (int) $countStmt->fetchColumn();
 $totalPages = $total > 0 ? (int) ceil($total / $perPage) : 1;
@@ -42,11 +45,11 @@ $sql = "SELECT
             buyer.email AS buyer_email
         FROM listings l
         LEFT JOIN purchase_requests pr
-            ON l.id = pr.listing_id AND pr.status = 'completed'
+            ON l.id = pr.listing_id AND pr.status = 'completed' AND pr.seller_id = l.seller_id
         LEFT JOIN users buyer
             ON pr.buyer_id = buyer.id
-        WHERE l.seller_id = ? AND l.status = 'sold'
-        ORDER BY COALESCE(pr.completed_at, l.updated_at) DESC
+        WHERE l.seller_id = ? AND (l.status = 'sold' OR pr.id IS NOT NULL)
+        ORDER BY COALESCE(pr.completed_at, l.updated_at) DESC, l.id DESC, pr.id DESC
         LIMIT {$perPage} OFFSET {$offset}";
 
 $stmt = $db->prepare($sql);
@@ -66,7 +69,7 @@ foreach ($rows as $row) {
         'sold_at'             => $row['sold_at'],
         'purchase_request_id' => $row['purchase_request_id'] !== null ? (int) $row['purchase_request_id'] : null,
         'meeting_location'    => $row['meeting_location'] ?? null,
-        'completed_at'        => $row['completed_at'] ?? $row['sold_at'],
+        'completed_at'        => $row['completed_at'] ?? null,
         'buyer_name'          => $row['buyer_name'] ?? null,
         'buyer_email'         => $row['buyer_email'] ?? null,
     ];

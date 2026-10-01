@@ -193,6 +193,10 @@ if (empty($updates)) {
     ]);
 }
 
+if (array_key_exists('image_url', $updates)) {
+    sellerValidateImageUrl($db, $updates['image_url'], $sellerId, $existing['image_url'] ?? null);
+}
+
 // Determine status transition:
 // If status was changes_requested or rejected, editing resubmits it for review (pending_approval)
 $newStatus = $existing['status'];
@@ -211,10 +215,21 @@ foreach ($updates as $col => $val) {
 $setClauses[] = '`updated_at` = NOW()';
 $bindParams[] = $listingId;
 $bindParams[] = $sellerId;
+$bindParams[] = $existing['status'];
+$bindParams[] = $existing['updated_at'];
 
-$sql = 'UPDATE listings SET ' . implode(', ', $setClauses) . ' WHERE id = ? AND seller_id = ?';
+$sql = 'UPDATE listings SET ' . implode(', ', $setClauses) . ' WHERE id = ? AND seller_id = ? AND status = ? AND updated_at = ?';
 $updateStmt = $db->prepare($sql);
 $updateStmt->execute($bindParams);
+if ($updateStmt->rowCount() === 0) {
+    // An identical save is valid; a changed status/timestamp requires reloading.
+    $currentStmt = $db->prepare('SELECT * FROM listings WHERE id = ? AND seller_id = ?');
+    $currentStmt->execute([$listingId, $sellerId]);
+    $current = $currentStmt->fetch();
+    if (!$current || $current['status'] !== $existing['status'] || $current['updated_at'] !== $existing['updated_at']) {
+        sendErrorResponse('Listing changed while editing. Reload it before saving again.', 409);
+    }
+}
 
 // Fetch updated row
 $refreshStmt = $db->prepare('SELECT * FROM listings WHERE id = ?');
