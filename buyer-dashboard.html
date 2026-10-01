@@ -1,4 +1,69 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Buyer Dashboard | UIU Books</title><link rel="stylesheet" href="buyer.css"><script defer src="auth.js?v=20261001-auth-v5"></script><style>body[data-auth-checking] main{visibility:hidden}</style></head><body data-auth-checking>
-<nav><a class="brand" href="index.html">UIU Books <small>Marketplace</small></a><div><a href="buyer-dashboard.html">Dashboard</a><a href="listing-details.html">Browse</a><a href="messages.html">Messages</a><button type="button" class="secondary" data-auth-logout>Sign out</button></div></nav>
-<main class="shell"><header><p class="eyebrow">BUYER DASHBOARD</p><h1>Hello, Zahir</h1><p>Discover course materials and manage purchase requests.</p><p style="font-size:13px;margin-top:8px">Dashboard figures and recommendations are sample data; account identity is server-backed.</p></header><section class="stats"><article><span>Wishlist</span><strong>2</strong></article><article><span>Active requests</span><strong id="requestCount">0</strong></article><article><span>Books purchased</span><strong>3</strong></article><article><span>Money saved</span><strong>৳1,250</strong></article></section>
-<section class="panel"><h2>Recommended for CSE</h2><div class="book"><img src="https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=600&h=400&fit=crop" alt="Textbook"><div><span class="tag">CSE-2101</span><h3>Data Structures and Algorithms</h3><p>Like New · Rafiul Islam · Seller rating 4.8</p><strong>৳450</strong><br><a class="primary" href="listing-details.html">View listing</a></div></div></section></main><script src="buyer.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Buyer Dashboard | UIU Books</title>
+	<link rel="stylesheet" href="buyer.css">
+	<link rel="stylesheet" href="workflow.css">
+	<script defer src="auth.js?v=20261002-auth-v7"></script>
+	<script defer src="buyer.js?v=20261002-buyer-v1"></script>
+	<style>body[data-auth-checking] main{visibility:hidden}</style>
+</head>
+<body data-auth-checking>
+	<nav>
+		<a class="brand" href="index.html">UIU Books <small>Marketplace</small></a>
+		<div>
+			<a href="#wishlistPanel">Wishlist</a>
+			<a href="#requestsPanel">My requests</a>
+			<a href="messages.html">Messages</a>
+			<button type="button" class="secondary" data-auth-logout>Sign out</button>
+		</div>
+	</nav>
+	<main class="shell">
+		<header class="buyer-header">
+			<div><p class="eyebrow">BUYER DASHBOARD</p><h1 id="buyerGreeting">Buyer Dashboard</h1><p>Discover course materials and manage your purchases.</p></div>
+		</header>
+		<div id="buyerDashboardError" class="workflow-alert workflow-error" role="alert" hidden></div>
+		<div id="buyerDashboardLoading" class="workflow-loading" role="status">Loading your dashboard…</div>
+		<section class="stats" id="buyerStats" aria-label="Buyer account statistics" hidden>
+			<article><span>Wishlist</span><strong id="wishlistCount">—</strong></article>
+			<article><span>Active requests</span><strong id="requestCount">—</strong></article>
+			<article><span>Completed purchases</span><strong id="completedCount">—</strong></article>
+			<article><span>Estimated savings</span><strong id="savedCount">—</strong></article>
+		</section>
+
+		<section class="panel workflow-section" aria-labelledby="recommendationsHeading">
+			<div class="panel-head"><div><h2 id="recommendationsHeading">Available listings</h2><p>Recent listings recommended by the marketplace.</p></div></div>
+			<div id="recommendationsLoading" class="workflow-loading" hidden>Loading listings…</div>
+			<div id="recommendationsError" class="workflow-alert workflow-error" role="alert" hidden></div>
+			<div id="recommendationsEmpty" class="workflow-empty" hidden>No available listings to show.</div>
+			<div id="recommendationsGrid" class="workflow-card-grid"></div>
+		</section>
+
+		<section id="wishlistPanel" class="panel workflow-section" aria-labelledby="wishlistHeading">
+			<div class="panel-head"><div><h2 id="wishlistHeading">Wishlist</h2><p>Saved listings and current availability.</p></div></div>
+			<div id="wishlistLoading" class="workflow-loading" hidden>Loading wishlist…</div>
+			<div id="wishlistError" class="workflow-alert workflow-error" role="alert" hidden></div>
+			<div id="wishlistEmpty" class="workflow-empty" hidden>Your wishlist is empty.</div>
+			<div id="wishlistGrid" class="workflow-card-grid"></div>
+		</section>
+
+		<section id="requestsPanel" class="panel workflow-section" aria-labelledby="requestsHeading">
+			<div class="panel-head"><div><h2 id="requestsHeading">Purchase requests</h2><p>Track seller decisions and completed meetups.</p></div></div>
+			<div id="requestsLoading" class="workflow-loading" hidden>Loading requests…</div>
+			<div id="requestsError" class="workflow-alert workflow-error" role="alert" hidden></div>
+			<div id="requestsEmpty" class="workflow-empty" hidden>You have not submitted any purchase requests.</div>
+			<div id="requestsList" class="workflow-list"></div>
+		</section>
+
+		<section class="panel workflow-section" aria-labelledby="reviewsHeading">
+			<div class="panel-head"><div><h2 id="reviewsHeading">Your reviews</h2><p>Reviews you have submitted for completed purchases.</p></div></div>
+			<div id="myReviewsLoading" class="workflow-loading" hidden>Loading reviews…</div>
+			<div id="myReviewsError" class="workflow-alert workflow-error" role="alert" hidden></div>
+			<div id="myReviewsEmpty" class="workflow-empty" hidden>You have not submitted any reviews.</div>
+			<div id="myReviewsList" class="workflow-list"></div>
+		</section>
+	</main>
+</body>
+</html>

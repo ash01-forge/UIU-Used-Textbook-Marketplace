@@ -1,4 +1,27 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Sales History | UIU Books</title><link rel="stylesheet" href="seller.css"></head>
-<body><nav><a class="brand" href="seller-dashboard.html">UIU Books <span>Marketplace</span></a><a href="seller-dashboard.html">Dashboard</a></nav><main class="shell"><header class="hero"><div><p class="eyebrow">SELLER ACCOUNT</p><h1>Sales history</h1><p>Completed campus textbook transactions.</p></div></header><section class="panel"><div class="table-wrap"><table><thead><tr><th>Book</th><th>Buyer</th><th>Price</th><th>Date</th><th>Status</th></tr></thead><tbody><tr><td>Data Structures and Algorithms</td><td>Zahir Raihan</td><td>৳450</td><td>28 July 2026</td><td><span class="badge sold">Sold</span></td></tr></tbody></table></div></section></main></body></html>
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Sales History | UIU Books</title>
+	<link rel="stylesheet" href="seller.css">
+	<link rel="stylesheet" href="workflow.css">
+	<script defer src="auth.js?v=20261002-auth-v7"></script>
+	<script defer src="seller.js?v=20261002-seller-v1"></script>
+	<style>body[data-auth-checking] main{visibility:hidden}</style>
+</head>
+<body data-auth-checking>
+	<nav><a class="brand" href="seller-dashboard.html">UIU Books <span>Marketplace</span></a><div><a href="seller-dashboard.html">Dashboard</a><a href="messages.html">Messages</a><button type="button" class="secondary" data-auth-logout>Sign out</button></div></nav>
+	<main class="shell">
+		<header class="hero"><div><p class="eyebrow">SELLER ACCOUNT</p><h1>Sales history</h1><p>Completed campus transactions and handoff details.</p></div></header>
+		<section class="panel">
+			<p class="workflow-muted">Sale-time prices are not stored, so this report does not display revenue.</p>
+			<div id="sellerSalesError" class="workflow-alert workflow-error" role="alert" hidden></div>
+			<div id="sellerSalesLoading" class="workflow-loading" hidden>Loading sales history…</div>
+			<div id="sellerSalesEmpty" class="workflow-empty" hidden>No completed sales found.</div>
+			<div class="table-wrap"><table><thead><tr><th>Book</th><th>Buyer</th><th>Completed</th><th>Meeting place</th><th>Record</th></tr></thead><tbody id="sellerSales"></tbody></table></div>
+			<div id="sellerSalesPagination" class="workflow-pagination" hidden></div>
+		</section>
+	</main>
+</body>
+</html>
