@@ -17,11 +17,13 @@ A responsive marketplace prototype where UIU students can browse, buy, sell, and
 
 ## Run locally
 
-Open this folder in VS Code, then open `index.html` with Live Server. An internet connection is needed for remote listing images.
+For authentication, start XAMPP Apache and MySQL and open `http://localhost/UIU-Used-Textbook-Marketplace/`. PHP authentication does not work from Live Server or by opening the HTML file directly. An internet connection is needed for remote listing images.
+
+Sign in with an existing account from the main marketplace or `seller-login.html`. Create buyer or seller accounts at `register.html`; the PHP session is authoritative and restored on page load. When the PHP API is unavailable, the guest marketplace demo remains browseable, but sign-in and registration show an explicit error rather than faking authentication.
 
 ## Project status
 
-This repository currently contains a frontend-only demonstration build. Dashboard values, users, messages, listings, transactions, and reports are mock data for presentation purposes. A backend and database can be added later in this same repository.
+Authentication is connected to the PHP backend. Dashboard values, listings, purchase requests, messages, transactions, and reports remain mock/demo data until their marketplace, buyer, seller, messaging, and admin APIs are implemented.
 
 ## Technology
 
@@ -29,4 +31,3 @@ This repository currently contains a frontend-only demonstration build. Dashboar
 - CSS
 - JavaScript
 - React (compiled production build)
-
