@@ -254,6 +254,47 @@ Below is the agreed endpoint contract to guide individual module development:
 
 ---
 
+#### Marketplace implementation details (Tashin)
+
+All three marketplace endpoints accept GET without authentication. Other methods return 405 with `Allow: GET`. Only `status=available` listings are public (this status represents admin approval); pending, changes-requested, rejected and sold records are excluded from browse and details. Missing and inaccessible details both return 404. Invalid parameters return 422; unexpected database errors return a generic 500.
+
+`listings.php` retains `data.total` and `data.listings`, adding `data.pagination` with integer `page`, `per_page`, `total`, and `total_pages`. Empty results use `listings: []` and zero total pages. Beyond-last-page requests return an empty array with the actual total. Defaults: page 1, per_page 20, sort created_at, direction desc.
+
+| Parameter | Rules |
+| --- | --- |
+| search | Up to 100 UTF-8 characters; literal substring in title, author, course_code, subject; SQL wildcard characters are literal |
+| department, subject | Up to 100 characters; exact labels using database collation; omitted/empty means no filter |
+| type | Textbook, Notes, Lab Manual; omitted/empty means all |
+| condition | New, Like New, Good, Fair, Poor; omitted/empty means all |
+| category_id | Positive integer through 2147483647; matches stored listings.category_id directly |
+| min_price, max_price | Inclusive nonnegative decimal through 99999999.99, at most two fractional digits; minimum must not exceed maximum |
+| page | Integer 1..1000000 |
+| per_page | Integer 1..100 |
+| sort | created_at, price, title |
+| direction | asc, desc; ties resolved by listing ID in the same direction |
+
+Filters combine with AND. Send omitted/empty type or department instead of the demo UI's `all` sentinel. Unknown query keys are ignored. Malformed arrays are rejected for supported parameters.
+
+Browse rows explicitly expose id, category_id, title, author, edition, course_code, department, subject, item_type, condition_type, price, image_url, created_at, seller_name and seller_rating. IDs are integers, price/rating numbers, and missing category/rating is null. Rating is the average of stored reviews, not a fabricated default. Timestamps are database DATETIME strings.
+
+`listing-details.php?id=1` requires a positive integer ID and returns `data.listing` with the browse fields plus description, seller_id and seller_avatar_url. No email, phone, student ID, password hash, admin feedback or internal moderation fields are returned. Consumers must render text safely and validate image URLs before use.
+
+`categories.php` optionally accepts department (up to 100 characters). It returns `data.categories` (id/name/type/department), `departments` (id/name), `subjects` (id/name/departments array), `item_types`, `conditions`, `sort_fields`, and `sort_directions`. These are taxonomy/filter options and may have no current matching listings.
+
+For migrated categories, a stored department is authoritative. For fresh categories without department columns (or an unassigned subject), parent labels are inferred only from exact subject names on available listings. Unmapped subjects have an empty departments array; no Cartesian department-subject mapping is invented. The optional department filter excludes unrelated/unmapped subjects. Fresh seed listing category IDs often point to a Department, so category_id and subject filters are intentionally distinct. This endpoint does not invent category IDs for listing subjects missing from the taxonomy.
+
+Example requests:
+
+```http
+GET /api/marketplace/listings.php?department=CSE&type=Textbook&sort=price&direction=asc&page=1&per_page=10
+GET /api/marketplace/listing-details.php?id=1
+GET /api/marketplace/categories.php?department=CSE
+```
+
+Validation: `C:\xampp\php\php.exe tests\marketplace_test.php`. This CLI-only runner creates tagged disposable fixtures and cleans only its IDs. Do not run it concurrently with real database edits; it compares original table contents before and after. Auto-increment counters can advance. It never resets tables, reseeds demo records, or runs migrations.
+
+Frontend integration remains Adeeb's responsibility; these APIs do not replace the existing demo UI data automatically. Cash on Meet only; no transaction writes are part of this module.
+
 ### 3.3 Seller Management (`api/seller/` - Owner: Labib)
 
 Every seller endpoint requires an authenticated session with `role === 'seller'`. Guests receive HTTP 401; users with role `'buyer'` or `'admin'` receive HTTP 403. Every state-changing request (`POST`, `PUT`, `DELETE`) requires `X-CSRF-Token` (or a `csrf_token` body field). Sellers cannot view, modify, mark sold, or delete listings belonging to other sellers (strict cross-seller ownership enforcement yields HTTP 403). Responses use the standardized JSON envelope.
