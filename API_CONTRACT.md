@@ -70,12 +70,46 @@ Below is the agreed endpoint contract to guide individual module development:
 
 | Method | Endpoint | Access | Description |
 | :----- | :------- | :----- | :---------- |
-| `POST` | `/api/auth/login.php` | Public | Authenticates user credentials, sets session cookie |
-| `POST` | `/api/auth/register.php` | Public | Registers a new UIU student account |
-| `GET`  | `/api/auth/me.php` | Authenticated | Returns logged-in user profile & CSRF token |
-| `POST` | `/api/auth/logout.php` | Authenticated | Destroys session and clears cookie |
+| `POST` | `/api/auth/login.php` | Public | Authenticates credentials, regenerates session ID, sets cookie, returns user & CSRF token |
+| `POST` | `/api/auth/register.php` | Public | Registers a new student account (`buyer` or `seller` only; `admin` blocked), sets session, returns user & CSRF token |
+| `GET`  | `/api/auth/me.php` | Authenticated | Returns current logged-in user profile & fresh CSRF token (401 if unauthenticated) |
+| `POST` | `/api/auth/logout.php` | Authenticated | Validates CSRF token, destroys session, clears cookie |
+| `GET`  | `/api/auth/csrf.php` | Public | Generates or retrieves current session CSRF token |
 
-#### Login Request Payload:
+#### Registration Request Payload (`POST /api/auth/register.php`):
+```json
+{
+  "full_name": "Rahim Ahmed",
+  "email": "rahim@uiu.ac.bd",
+  "password": "StrongPassword123",
+  "role": "buyer",
+  "student_id": "011211099",
+  "department": "CSE"
+}
+```
+* `role` must be strictly `"buyer"` or `"seller"`. Supplying `"admin"` yields HTTP 422.
+* `password` must be at least 8 characters.
+* `email` must be unique in `users` table.
+
+#### Registration Success Response (201 Created):
+```json
+{
+  "success": true,
+  "message": "Registration successful! Welcome to BookBridge.",
+  "data": {
+    "user": {
+      "id": 4,
+      "full_name": "Rahim Ahmed",
+      "email": "rahim@uiu.ac.bd",
+      "role": "buyer",
+      "student_id": "011211099"
+    },
+    "csrf_token": "a1b2c3d4e5f6..."
+  }
+}
+```
+
+#### Login Request Payload (`POST /api/auth/login.php`):
 ```json
 {
   "email": "seller@uiu.ac.bd",
@@ -87,7 +121,7 @@ Below is the agreed endpoint contract to guide individual module development:
 ```json
 {
   "success": true,
-  "message": "Login successful",
+  "message": "Login successful.",
   "data": {
     "user": {
       "id": 2,
@@ -100,6 +134,63 @@ Below is the agreed endpoint contract to guide individual module development:
   }
 }
 ```
+
+#### Current User Profile Response (`GET /api/auth/me.php`):
+* Header: Requires active session cookie `bookbridge_session`.
+```json
+{
+  "success": true,
+  "message": "Session is active.",
+  "data": {
+    "user": {
+      "id": 2,
+      "full_name": "Rafiul Islam",
+      "email": "seller@uiu.ac.bd",
+      "role": "seller",
+      "student_id": "011211054",
+      "phone": null,
+      "avatar_url": null
+    },
+    "csrf_token": "a1b2c3d4e5f6..."
+  }
+}
+```
+
+#### Logout Request (`POST /api/auth/logout.php`):
+* Header: Requires active session cookie AND `X-CSRF-Token: <token>` (or `csrf_token` in body).
+```json
+{
+  "success": true,
+  "message": "You have been logged out successfully."
+}
+```
+
+#### CSRF Token Request (`GET /api/auth/csrf.php`):
+```json
+{
+  "success": true,
+  "message": "CSRF token issued.",
+  "data": {
+    "csrf_token": "a1b2c3d4e5f6..."
+  }
+}
+```
+
+#### Standard Error Response Format:
+```json
+{
+  "success": false,
+  "message": "Registration failed. Please fix the errors below.",
+  "errors": {
+    "email": "An account with this email address already exists.",
+    "password": "Password must be at least 8 characters long."
+  }
+}
+```
+* **HTTP 401**: Unauthenticated / invalid credentials.
+* **HTTP 403**: CSRF validation failed / unauthorized role access.
+* **HTTP 405**: Method not allowed (e.g. GET on register.php).
+* **HTTP 422**: Validation errors / duplicate entries / prohibited privileges.
 
 ---
 

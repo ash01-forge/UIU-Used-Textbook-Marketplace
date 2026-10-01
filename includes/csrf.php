@@ -72,6 +72,15 @@ if (!function_exists('getCsrfToken')) {
 
         // 1. Check HTTP header: X-CSRF-Token
         $headerToken = $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+        if (empty($headerToken) && function_exists('getallheaders')) {
+            $headers = getallheaders();
+            foreach ($headers as $name => $val) {
+                if (strcasecmp($name, 'X-CSRF-Token') === 0) {
+                    $headerToken = $val;
+                    break;
+                }
+            }
+        }
 
         // 2. Check JSON request body or POST field
         $bodyToken = null;

@@ -106,3 +106,24 @@ The seed file `database/bookbridge.sql` includes ready-to-use demo accounts:
 | Buyer  | Zahir Raihan  | `buyer@uiu.ac.bd`    | `password123` | `011211088` |
 | Seller | Nusrat Jahan  | `nusrat@uiu.ac.bd`   | `password123` | `011212030` |
 | Buyer  | Tanvir Ahmed  | `tanvir@uiu.ac.bd`   | `password123` | `011213012` |
+
+---
+
+## 7. Running Backend Tests (CLI Only)
+
+For security, test runners are placed in the `tests/` directory outside the public `api/` directory, and web execution is blocked (HTTP 403 Forbidden). Tests must be executed directly via command line.
+
+### Prerequisites:
+1. XAMPP **Apache** and **MySQL** must be running.
+2. The `bookbridge_db` database must be initialized.
+
+### Test Execution Command:
+Open PowerShell or Command Prompt in the project root and run:
+```powershell
+C:\xampp\php\php.exe tests\auth_test.php
+```
+
+### Safety Features:
+- **CLI Only**: The test runner rejects browser/HTTP invocations before performing any operations.
+- **Disposable Accounts**: Uses dynamically generated temporary emails (`test_buyer_<uniq>@uiu.ac.bd`) and automatically cleans them up after completion.
+- **Data Preservation**: Baseline demo users (IDs 1, 2, 3) and existing database listings/categories are strictly preserved and never modified or deleted.
