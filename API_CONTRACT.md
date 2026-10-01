@@ -256,16 +256,60 @@ Below is the agreed endpoint contract to guide individual module development:
 
 ### 3.3 Seller Management (`api/seller/` - Owner: Labib)
 
-| Method | Endpoint                        | Access | Description                                            |
-| :----- | :------------------------------ | :----- | :----------------------------------------------------- |
-| `GET`  | `/api/seller/dashboard.php`     | Seller | Seller metrics (total listings, active, sold, revenue) |
-| `GET`  | `/api/seller/listings.php`      | Seller | Listings owned by logged-in seller                     |
-| `POST` | `/api/seller/add-listing.php`   | Seller | Creates a new listing with status `pending_approval`   |
-| `PUT`  | `/api/seller/edit-listing.php`  | Seller | Updates listing owned by seller                        |
-| `POST` | `/api/seller/mark-sold.php`     | Seller | Marks listing as `sold` and concludes transaction      |
-| `GET`  | `/api/seller/sales-history.php` | Seller | History of completed sales                             |
+Every seller endpoint requires an authenticated session with `role === 'seller'`. Guests receive HTTP 401; users with role `'buyer'` or `'admin'` receive HTTP 403. Every state-changing request (`POST`, `PUT`, `DELETE`) requires `X-CSRF-Token` (or a `csrf_token` body field). Sellers cannot view, modify, mark sold, or delete listings belonging to other sellers (strict cross-seller ownership enforcement yields HTTP 403). Responses use the standardized JSON envelope.
 
-#### Add Listing Request Payload:
+| Method   | Endpoint                          | Access | Description                                                           |
+| :------- | :-------------------------------- | :----- | :-------------------------------------------------------------------- |
+| `GET`    | `/api/seller/dashboard.php`       | Seller | Real-time seller metrics (listings count by status, revenue, rating)  |
+| `GET`    | `/api/seller/listings.php`        | Seller | Filtered, paginated list of seller's own listings                     |
+| `GET`    | `/api/seller/listings.php?id={id}`| Seller | Full details of a specific listing owned by seller                    |
+| `POST`   | `/api/seller/add-listing.php`     | Seller | Submit a new textbook/notes listing (forced status: `pending_approval`)|
+| `PUT`    | `/api/seller/edit-listing.php`    | Seller | Update an existing listing owned by seller                            |
+| `POST`   | `/api/seller/mark-sold.php`       | Seller | Mark an available listing as `sold` (does not mutate purchase requests)|
+| `POST`   | `/api/seller/mark-unsold.php`     | Seller | Revert a sold listing back to `available`                             |
+| `POST`   | `/api/seller/delete-listing.php`  | Seller | Delete an unreferenced listing owned by seller                        |
+| `GET`    | `/api/seller/sales-history.php`   | Seller | View completed campus sales history with buyer info                   |
+| `GET`    | `/api/seller/profile.php`         | Seller | View seller profile, student ID, and summary stats                    |
+| `PUT`    | `/api/seller/profile.php`         | Seller | Update seller name, phone, or avatar (allowlisted fields only)        |
+| `POST`   | `/api/seller/upload-image.php`    | Seller | Upload a textbook cover photo (`multipart/form-data`)                 |
+
+#### 3.3.1 Seller Dashboard
+
+`GET /api/seller/dashboard.php` returns live counts and revenue status for the authenticated seller:
+
+```json
+{
+  "success": true,
+  "message": "Seller dashboard metrics retrieved.",
+  "data": {
+    "stats": {
+      "total_listings": 3,
+      "active_listings": 1,
+      "pending_approval": 1,
+      "changes_requested": 0,
+      "rejected": 0,
+      "sold_listings": 1,
+      "revenue": null,
+      "revenue_note": "Unavailable: completed purchases do not store transaction-time prices. Current listing prices are not realized sale amounts.",
+      "seller_rating": 4.8,
+      "review_count": 1,
+      "active_requests_count": 0
+    }
+  }
+}
+```
+
+#### 3.3.2 Seller Listings Queue & Details
+
+- **Listings Filter:** `GET /api/seller/listings.php?status=available&department=CSE&type=Textbook&search=Algorithms&page=1&per_page=20`
+  - `status`: optional filter (`pending_approval`, `available`, `changes_requested`, `rejected`, `sold`).
+  - `department`, `type`, `search`, `page`, `per_page` supported.
+- **Single Listing Detail:** `GET /api/seller/listings.php?id=1`
+  - Returns `listing` object owned by the seller. Accessing another seller's listing ID yields HTTP 403 Forbidden.
+
+#### 3.3.3 Add Listing
+
+`POST /api/seller/add-listing.php` creates a new listing. The seller identity (`seller_id`) is strictly extracted from the active session. Status is always assigned `pending_approval` awaiting Admin moderation; client attempts to self-approve or assign moderation fields (`reviewed_by`, `admin_feedback`) are ignored/blocked.
 
 ```json
 {
@@ -278,9 +322,112 @@ Below is the agreed endpoint contract to guide individual module development:
   "item_type": "Textbook",
   "condition_type": "Good",
   "price": 500,
-  "description": "Clean copy with minimal pencil markings."
+  "description": "Clean copy with minimal pencil markings.",
+  "image_url": "uploads/listings/img_a1b2c3d4e5f6.jpg"
 }
 ```
+
+Response (HTTP 201 Created):
+```json
+{
+  "success": true,
+  "message": "Listing submitted successfully and is pending admin approval.",
+  "data": {
+    "listing": {
+      "id": 8,
+      "seller_id": 2,
+      "title": "Artificial Intelligence: A Modern Approach",
+      "course_code": "CSE-4101",
+      "department": "CSE",
+      "price": 500.0,
+      "status": "pending_approval",
+      "created_at": "2026-10-01 19:00:00"
+    }
+  }
+}
+```
+
+#### 3.3.4 Edit Listing
+
+`PUT /api/seller/edit-listing.php` updates an owned listing. Allowlisted editable fields: `title`, `author`, `edition`, `course_code`, `department`, `subject`, `item_type`, `condition_type`, `price`, `description`, `image_url`, `category_id`.
+- Editing a listing in `changes_requested` or `rejected` automatically transitions its status back to `pending_approval` for re-moderation.
+- Sold listings cannot be edited directly (returns HTTP 409 Conflict).
+
+#### 3.3.5 Mark Sold & Mark Unsold
+
+- `POST /api/seller/mark-sold.php`: Accepts `{"id": 1}`. Only approved (`available`) listings can transition to `sold` using concurrency-safe conditional locking. Updates listing status to `sold`. In accordance with team module ownership, purchase-request status mutations belong strictly to Tanvir's buyer/transaction module.
+- `POST /api/seller/mark-unsold.php`: Accepts `{"id": 1}`. Only `sold` listings can transition to `unsold` using concurrency-safe conditional locking. Reverts status back to `available`. Stale concurrent requests return HTTP 409 Conflict.
+
+#### 3.3.6 Delete Listing
+
+`POST /api/seller/delete-listing.php` (or `DELETE`): Accepts `{"id": 1}`.
+- Deleting a listing that is `sold` or has completed purchase records is blocked with HTTP 409 Conflict to preserve transaction integrity.
+- Deleting a listing with active proposals (`pending` or `accepted`) returns HTTP 409 Conflict.
+- On safe deletion, unlinks associated local cover image from `uploads/listings/` and deletes the database record.
+
+#### 3.3.7 Sales History
+
+`GET /api/seller/sales-history.php` returns completed transactions:
+
+```json
+{
+  "success": true,
+  "message": "Seller sales history retrieved.",
+  "data": {
+    "total": 1,
+    "sales": [
+      {
+        "listing_id": 1,
+        "title": "Data Structures and Algorithms",
+        "course_code": "CSE-2101",
+        "department": "CSE",
+        "price": 450.00,
+        "status": "sold",
+        "buyer_name": "Zahir Raihan",
+        "buyer_email": "buyer@uiu.ac.bd",
+        "meeting_location": "UIU Library",
+        "completed_at": "2026-10-01 14:00:00"
+      }
+    ],
+    "pagination": { "total": 1, "page": 1, "per_page": 20, "total_pages": 1 }
+  }
+}
+```
+
+#### 3.3.8 Seller Profile
+
+- `GET /api/seller/profile.php`: Returns profile details (`full_name`, `email`, `student_id`, `phone`, `avatar_url`) and seller stats.
+- `PUT /api/seller/profile.php`: Accepts updates for `full_name`, `phone`, `avatar_url`. Modifying `id`, `email`, or `role` yields HTTP 422.
+
+#### 3.3.9 Secure Image Upload
+
+`POST /api/seller/upload-image.php`:
+- Content-Type: `multipart/form-data`, file field: `image`.
+- Header: `X-CSRF-Token: <token>`.
+- Allowed MIME types: `image/jpeg` (.jpg), `image/png` (.png), `image/webp` (.webp). Verified using file content inspection (`finfo`), not client extensions.
+- Maximum size: 2 MB.
+- Security: Filename is securely generated (`img_<hex>.ext`). Executable scripts and PHP execution are strictly disabled via `.htaccess` in `uploads/`.
+- Response (HTTP 201 Created):
+  ```json
+  {
+    "success": true,
+    "message": "Image uploaded successfully.",
+    "data": {
+      "image_url": "uploads/listings/img_4f9a12c8b0e5d3fa718290bc98471201.jpg",
+      "mime_type": "image/jpeg",
+      "size": 142050
+    }
+  }
+  ```
+
+#### 3.3.10 Seller Error Codes
+
+- **HTTP 401**: Unauthenticated session.
+- **HTTP 403**: Forbidden (user role is not `seller`, cross-seller ownership violation, or CSRF token mismatch).
+- **HTTP 404**: Listing or profile not found.
+- **HTTP 405**: Method not allowed (`Allow` header included).
+- **HTTP 409**: Conflict (e.g. attempting to edit/delete a sold listing, repeated mark-sold, or active purchase request blocker).
+- **HTTP 422**: Validation failed (missing required fields, negative price, invalid enum, non-image upload, or unauthorized privilege assignment).
 
 ---
 
