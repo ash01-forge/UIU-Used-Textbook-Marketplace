@@ -720,3 +720,7 @@ No user-listing, role-change, account-deletion, password-reset, or bulk-user ope
 ### Completed-sale price snapshots
 
 On accepted request completion, `sale_price` stores the current listing price in the same locked transaction as completion. It represents the app listing price at completion, not a verified external payment or negotiated cash amount. Admin report rows and seller history expose nullable `sale_price`. Dashboard/report `revenue` sums recorded completed sale prices only; `unpriced_sales_count` and `revenue_note` disclose older missing prices. Report `average_order_value` uses priced sales only. Report totals use the full date filter, independent of pagination. Manual mark-sold without a purchase request does not create recorded revenue.
+
+### Active-user reporting
+
+Admin sales-report `data.summary` also returns `active_users` (integer; null only for a period wholly before tracking), `activity_tracking_started_at` (database server timestamp), `activity_coverage_complete` (boolean), and `activity_note`. Date filters apply inclusively to daily activity and counts deduplicate each account across the whole period, independent of sales pagination. Tracking starts with migration 005 and records successful session authentication and protected API use; guests and failed logins are excluded. Counts include all roles, and are not live online counts. Existing accounts are not backfilled as active. Analytics failures are logged without preventing authentication.

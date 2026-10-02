@@ -5,6 +5,7 @@ require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/response.php';
 require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/sales.php';
+require_once __DIR__ . '/../../includes/activity.php';
 require_once __DIR__ . '/../../includes/admin.php';
 
 requireRole('admin');
@@ -44,6 +45,7 @@ $offset = ($page - 1) * $perPage;
 try {
     $db = getDbConnection();
     $summary = saleSummary($db, $where, $parameters);
+    $summary = array_merge($summary, activitySummary($db, $from, $to));
     $total = $summary['completed_sales_count'];
 
     $query = $db->prepare(

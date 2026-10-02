@@ -225,13 +225,14 @@
     const points=Object.values(grouped).sort((a,b)=>a.label.localeCompare(b.label));
     const max=Math.max(1,...points.map(p=>p.revenue));
     const note=h('span',{style:{display:'block'}},
+      h('span',{className:'bb-activity-note',style:{display:'block',marginBottom:12}},report?.summary?.activity_note||'Loading activity tracking…'),
       h('span',{className:'bb-revenue-note',style:{display:'block',marginBottom:12}},report?.revenue_note||'Loading recorded sale amounts…'),
       ...points.filter(p=>p.priced>0).map(p=>h('span',{key:p.label,style:{display:'block',marginBottom:12}},
         h('span',{style:{display:'block'}},p.label+' · '+money(p.revenue)),
         h('span',{role:'img','aria-label':p.label+' revenue '+money(p.revenue),style:{display:'block',height:12,width:Math.max(1,p.revenue/max*100)+'%',background:'#16a34a',borderRadius:4}}))));
     return {chartTitle:'Completed sales',data:points,
       kpis:{sales:report?.summary?.completed_sales_count??'Loading…',revenue:report?money(report.summary.revenue):'Loading…',
-        avg:report?money(report.summary.average_order_value):'Loading…',users:'Unavailable'},
+        avg:report?money(report.summary.average_order_value):'Loading…',users:report?(report.summary.active_users??'Not recorded'):'Loading…'},
       changes:{sales:'',revenue:'',avg:'',users:''},comparison:'',note,
       transactions:(report?.transactions||[]).map(row=>({id:row.purchase_request_id,book:row.listing_title,
         buyer:row.buyer_name,seller:row.seller_name,courseCode:row.course_code||'Unavailable',

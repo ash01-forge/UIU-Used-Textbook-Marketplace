@@ -13,6 +13,7 @@ The application combines a responsive frontend, PHP APIs, and a MySQL database, 
 - Manage department and subject categories.
 - View dashboard counts and completed-sales reports.
 - View reports for weekly, monthly, and yearly periods.
+- Count unique authenticated active accounts in each report period, with tracking coverage disclosed.
 
 ### Seller
 
@@ -226,7 +227,7 @@ Registration accepts UIU email addresses at `uiu.ac.bd` and its subdomains. User
 
 ## Database Design
 
-The application uses seven main tables.
+The application uses seven core marketplace tables plus two activity-tracking tables.
 
 | Table | Purpose |
 | --- | --- |
@@ -237,6 +238,8 @@ The application uses seven main tables.
 | `wishlists` | Saved buyer listings |
 | `messages` | Buyer and seller conversations |
 | `reviews` | Ratings and comments for eligible completed purchases |
+| `user_activity_daily` | One authenticated account/day record; unique users across report periods |
+| `activity_tracking_meta` | Initial tracking timestamp, preserved across repeated upgrades |
 
 ### Relationships
 
@@ -292,6 +295,7 @@ The fresh-install schema is stored in `database/bookbridge.sql`. Upgrade scripts
 
 - Reports show completed-sales counts and transaction records.
 - Completed meetups store a listing-price snapshot for revenue, average order value and transaction amounts. Later listing edits do not change past revenue. Older transactions without a snapshot are labelled Not recorded and excluded from monetary totals.
+- Active Users counts unique accounts with successful login or protected API usage in the selected date range, across all roles. Guests and failed logins are excluded. Dates use database server time; this is period activity, not a live online-user count. Tracking starts at migration 005; earlier activity cannot be reconstructed, and partial coverage is disclosed.
 - Buyer savings are estimates.
 
 ## Security and Validation
@@ -327,6 +331,8 @@ C:\xampp\php\php.exe tests\buyer_workflow_test.php
 C:\xampp\php\php.exe tests\seller_test.php
 C:\xampp\php\php.exe tests\release_readiness_test.php
 C:\xampp\php\php.exe tests\sale_price_test.php
+C:\xampp\php\php.exe tests\activity_test.php
+C:\xampp\php\php.exe tests\activity_auth_test.php
 ```
 
 JavaScript regressions (Node.js required):

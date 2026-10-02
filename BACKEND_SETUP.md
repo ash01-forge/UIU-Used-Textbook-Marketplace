@@ -176,3 +176,9 @@ Run the release-readiness regression suite with `C:\xampp\php\php.exe tests\rele
 ### Recorded sale amounts
 
 Existing installations must run `database/migrations/004_sale_price_snapshot.sql` before deploying the updated APIs. It is repeatable and leaves earlier completed sales unpriced. Fresh installations include the column. A completed meetup records the locked listing price; later listing edits/relisting do not change historical amounts. Reports show recorded revenue and explicitly exclude unpriced older transactions.
+
+## Active-user tracking upgrade
+
+Back up the existing database, select it in phpMyAdmin and import `database/migrations/005_user_activity_tracking.sql`. This additive migration preserves existing marketplace records and matches legacy signed/unsigned user IDs. Repeating it does not reset the tracking-start timestamp. The current fresh schema includes these tables; do not reimport it into an existing database.
+
+Active Users means unique authenticated accounts in the selected report period, including all roles, excluding guests and failed logins. Login and protected API guards record at most one row per account/database-calendar day. No IP addresses or tokens are stored. Prior activity is unknown and partial coverage is disclosed. It is not a currently-online indicator.
