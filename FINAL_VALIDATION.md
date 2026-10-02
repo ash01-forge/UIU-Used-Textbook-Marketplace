@@ -41,3 +41,17 @@ Browser checks are smoke tests, not an exhaustive device/browser matrix. Revenue
 Labib confirmed the supplied seller account was created on his own PC. It is not present in this localhost database. No existing account was recreated or had its password changed; disposable seller fixtures were used instead.
 
 Temporary test records and browser fixtures were removed. Existing uploaded book covers were excluded from the commit. Migration 003 should be applied to other older installations where `listings.subject` is still NOT NULL. Fresh installations already allow NULL.
+
+## Sale amount reporting — 3 October 2026
+
+Migration 004 adds nullable `purchase_requests.sale_price`. Completion saves the locked listing price atomically. Dashboard/report totals and seller revenue use these immutable amounts, including valid zero-price sales. Date filters apply to the full summary, independent of report pagination. Existing historical prices remain unknown and are explicitly excluded with a coverage note; no fabricated backfill was performed. These are recorded listing prices at completion, not verification of external cash payments.
+
+Validation rerun after this change:
+- Sale-price backend regression: 12 checks plus isolated database cleanup passed (repeatable migration, ownership, completion, immutable history, duplicate rejection, zero, averages, pagination, date range and seller scope).
+- Admin API: 68 passed; seller API: 71 passed; buyer/messages/reviews: 87 passed.
+- Release readiness passed.
+- Sale-price UI, seller integration, marketplace UI and guest marketplace suites passed.
+- PHP API/helper and JavaScript syntax checks passed.
+- Browser dashboard and sales report showed a disposable QA transaction of BDT 245.75, correct total/average, daily revenue and an unknown historical amount. The QA transaction, listing and buyer were removed. After the markup correction the browser produced no new console errors.
+
+The local database migration is applied and original request fields are preserved. Other installations must apply migration 004 before using the new APIs. Existing app.js formatting and user uploads were excluded from this commit.

@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS `purchase_requests` (
   `note` TEXT NULL,
   `status` ENUM('pending', 'accepted', 'declined', 'completed', 'cancelled') NOT NULL DEFAULT 'pending',
   `completed_at` DATETIME NULL,
+  `sale_price` DECIMAL(10,2) NULL DEFAULT NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   CONSTRAINT `fk_purchases_listing` FOREIGN KEY (`listing_id`) REFERENCES `listings` (`id`) ON DELETE CASCADE,

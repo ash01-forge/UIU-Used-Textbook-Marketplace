@@ -8,6 +8,7 @@
  */
 
 require_once __DIR__ . '/helpers.php';
+require_once __DIR__ . '/../../includes/sales.php';
 
 sellerRequireMethod(['GET']);
 
@@ -38,10 +39,10 @@ foreach ($statusRows as $r) {
     }
 }
 
-// 2. Revenue status: purchase_requests schema does not store transaction-time prices.
-// Following the shared contract convention, current listing prices are not presented as verified realized revenue.
-$revenue = null;
-$revenueNote = 'Unavailable: completed purchases do not store transaction-time prices. Current listing prices are not realized sale amounts.';
+// 2. Immutable completed-sale amounts, scoped to this seller.
+$summary = saleSummary($db, "pr.status = 'completed' AND pr.seller_id = ?", [$sellerId]);
+$revenue = $summary['revenue'];
+$revenueNote = $summary['revenue_note'];
 
 // 3. Average rating and total review count from buyers
 $ratingStmt = $db->prepare('SELECT COALESCE(AVG(rating), 0) AS avg_rating, COUNT(*) AS review_cnt FROM reviews WHERE seller_id = ?');
@@ -66,6 +67,7 @@ sendSuccessResponse('Seller dashboard metrics retrieved.', [
         'total_revenue'         => $revenue,
         'revenue'               => $revenue,
         'revenue_note'          => $revenueNote,
+        'unpriced_sales_count'  => $summary['unpriced_sales_count'],
         'seller_rating'         => $avgRating,
         'review_count'          => $reviewCount,
         'active_requests_count' => $activeRequests,

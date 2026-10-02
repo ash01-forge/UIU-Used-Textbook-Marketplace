@@ -177,10 +177,11 @@ try {
         // 2. Mark this request as 'completed'
         $stmtComplete = $db->prepare("
             UPDATE purchase_requests 
-            SET status = 'completed', completed_at = NOW(), updated_at = NOW() 
+            SET status = 'completed', completed_at = NOW(), sale_price = ?, updated_at = NOW()
             WHERE id = ?
         ");
-        $stmtComplete->execute([$requestId]);
+        // The listing row is locked; bind the decimal string without float rounding.
+        $stmtComplete->execute([$listing['price'], $requestId]);
 
         // 3. Invariant: Clean up any other remaining pending requests for this now-sold listing
         $stmtCleanup = $db->prepare("
@@ -197,6 +198,7 @@ try {
             'status'         => 'completed',
             'listing_id'     => $listingId,
             'listing_status' => 'sold',
+            'sale_price'     => (float)$listing['price'],
         ]);
     }
 

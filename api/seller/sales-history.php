@@ -41,6 +41,7 @@ $sql = "SELECT
             pr.id AS purchase_request_id,
             pr.meeting_location,
             pr.completed_at,
+            pr.sale_price,
             buyer.full_name AS buyer_name,
             buyer.email AS buyer_email
         FROM listings l
@@ -64,7 +65,8 @@ foreach ($rows as $row) {
         'course_code'         => $row['course_code'],
         'department'          => $row['department'],
         'item_type'           => $row['item_type'],
-        'price'               => (float) $row['price'],
+        'price'               => (float) $row['price'], // Current listing price, retained for compatibility.
+        'sale_price'          => $row['sale_price'] === null ? null : (float)$row['sale_price'],
         'status'              => $row['status'],
         'sold_at'             => $row['sold_at'],
         'purchase_request_id' => $row['purchase_request_id'] !== null ? (int) $row['purchase_request_id'] : null,

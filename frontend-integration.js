@@ -38,7 +38,7 @@
   function sales(rows) {
     return rows.map(row => ({...row, id: `${row.listing_id}-${row.purchase_request_id || 'manual'}`,
       book: row.title, buyer: row.buyer_name || 'Unavailable', seller: window.BookBridgeAuth.currentUser?.full_name || '',
-      price: 'Unavailable', date: row.completed_at || row.sold_at, courseCode: row.course_code}));
+      price: row.sale_price == null ? 'Not recorded' : money(row.sale_price), date: row.completed_at || row.sold_at, courseCode: row.course_code}));
   }
   async function perform(key, action) {
     if (pending.has(key)) return null;
@@ -181,14 +181,39 @@
     const visible=state.key===key&&state.page===page?state:{rows:[],total:0,totalPages:0,loading:true,error:null};
     return {...visible,page,setPage:next=>setPosition({key,page:next})};
   }
+  function money(value) {
+    return value == null ? 'Not recorded' : '৳' + Number(value).toLocaleString('en-BD', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  function reportView(React,report) {
+    const h=React.createElement, grouped={};
+    for(const row of report?.transactions||[]) {
+      const key=(row.completed_at||'').slice(0,10);
+      grouped[key] ||= {label:key,sales:0,revenue:0,priced:0};
+      grouped[key].sales++;
+      if(row.sale_price!=null) {grouped[key].revenue+=Number(row.sale_price);grouped[key].priced++;}
+    }
+    const points=Object.values(grouped).sort((a,b)=>a.label.localeCompare(b.label));
+    const max=Math.max(1,...points.map(p=>p.revenue));
+    const note=h('span',{style:{display:'block'}},
+      h('span',{className:'bb-revenue-note',style:{display:'block',marginBottom:12}},report?.revenue_note||'Loading recorded sale amounts…'),
+      ...points.filter(p=>p.priced>0).map(p=>h('span',{key:p.label,style:{display:'block',marginBottom:12}},
+        h('span',{style:{display:'block'}},p.label+' · '+money(p.revenue)),
+        h('span',{role:'img','aria-label':p.label+' revenue '+money(p.revenue),style:{display:'block',height:12,width:Math.max(1,p.revenue/max*100)+'%',background:'#16a34a',borderRadius:4}}))));
+    return {chartTitle:'Completed sales',data:points,
+      kpis:{sales:report?.summary?.completed_sales_count??'Loading…',revenue:report?money(report.summary.revenue):'Loading…',
+        avg:report?money(report.summary.average_order_value):'Loading…',users:'Unavailable'},
+      changes:{sales:'',revenue:'',avg:'',users:''},comparison:'',note,
+      transactions:(report?.transactions||[]).map(row=>({id:row.purchase_request_id,book:row.listing_title,
+        buyer:row.buyer_name,seller:row.seller_name,courseCode:row.course_code||'Unavailable',
+        price:money(row.sale_price),date:row.completed_at}))};
+  }
   function useReport(React,period) {
     const [report,setReport]=React.useState(null);
     React.useEffect(()=>{let active=true;setReport(null);const now=new Date(),from=new Date(now);if(period==='weekly')from.setDate(from.getDate()-6);else if(period==='monthly')from.setDate(1);else {from.setMonth(0);from.setDate(1);}
       const format=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
       (async()=>{let first,transactions=[];for(let page=1;;page++){const result=await API().adminSalesReport(`?from=${format(from)}&to=${format(now)}&per_page=100&page=${page}`);first ||=result.data;transactions.push(...result.data.transactions);if(page>=(result.data.pagination?.total_pages||1))break;}if(active)setReport({...first,transactions});})().catch(error=>notify(error.message,true));return()=>{active=false;};
     },[period]);
-    const grouped={};for(const row of report?.transactions||[]){const key=(row.completed_at||'').slice(0,10);grouped[key]=(grouped[key]||0)+1;}
-    return {chartTitle:'Completed sales',data:Object.entries(grouped).sort().map(([label,sales])=>({label,sales})),kpis:{sales:report?.summary?.completed_sales_count??'Unavailable',revenue:'Unavailable',avg:'Unavailable',users:'Unavailable'},changes:{sales:'',revenue:'',avg:'',users:''},comparison:'',note:report?.revenue_note||'Unavailable: completed transactions have no stored sale price.',transactions:(report?.transactions||[]).map(row=>({id:row.purchase_request_id,book:row.listing_title,buyer:row.buyer_name,seller:row.seller_name,courseCode:row.course_code||'Unavailable',price:'Unavailable',date:row.completed_at}))};
+    return reportView(React,report);
   }
   function extraLinks(React,role,navigate) {return ['buyer','seller'].includes(role)?React.createElement(React.Fragment,null,...[['purchase-requests','Purchase Requests'],['chat','Messages'],['profile','My Profile']].map(([view,label])=>React.createElement('button',{key:view,type:'button',className:'bb-menu-link',onClick:()=>navigate(view)},label))):null;}
   function EditListing({React, listing:row, taxonomy, navigate, onSaveListing}) {
@@ -236,7 +261,7 @@
         h('div',{className:'bb-actions'},h('button',{type:'button',className:'btn-secondary',disabled:busy,onClick:()=>navigate('manage-listings')},'Cancel'),
           h('button',{type:'submit',className:'btn-primary',disabled:busy},busy?'Saving…':'Save Changes'))));
   }
-  window.BookBridgeUI = {listing, sales, perform, useData, upload, notify, date, imageUrl, usePreview, Requests, Profile, EditListing, useChat, useMarketplaceFilters, marketplaceFilters, marketplacePagination, useMarketplace, useReport, extraLinks,
+  window.BookBridgeUI = {listing, sales, perform, useData, upload, notify, date, imageUrl, usePreview, Requests, Profile, EditListing, useChat, useMarketplaceFilters, marketplaceFilters, marketplacePagination, useMarketplace, useReport, reportView, extraLinks,
     render(React, C) {
       const h = React.createElement;
       const [user, setUser] = React.useState(null);
