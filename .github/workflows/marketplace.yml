@@ -26,10 +26,14 @@ jobs:
         run: |
           node --check app.js
           node --check frontend-integration.js
+          node --check guest.js
+          node --check tests/guest_marketplace_test.js
           node --check api-integration.js
           node --check tests/marketplace_ui_test.js
       - name: Run marketplace regression tests without a database
-        run: node tests/marketplace_ui_test.js
+        run: |
+          node tests/marketplace_ui_test.js
+          node tests/guest_marketplace_test.js
       - name: Lint marketplace PHP without executing endpoints
         run: |
           for file in api/marketplace/*.php tests/marketplace_test.php; do

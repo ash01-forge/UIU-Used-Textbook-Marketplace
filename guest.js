@@ -63,6 +63,10 @@
     const department = $("#department").value;
     const subjects = taxonomy.subjects.filter(subject => !department || subject.departments.includes(department));
     fillSelect($("#subject"), "All subjects", subjects, subject => subject.name, subject => subject.name);
+    const subjectIds = new Set(subjects.map(subject => subject.id));
+    const categories = taxonomy.categories.filter(category => !department ||
+      (category.type === "Department" ? category.name === department : subjectIds.has(category.id)));
+    fillSelect($("#categoryId"), "All categories", categories, item => item.id, item => `${item.name} · ${item.type}`);
   }
 
   async function loadTaxonomy() {
@@ -75,7 +79,6 @@
       };
       fillSelect($("#department"), "All departments", taxonomy.departments, item => item.name, item => item.name);
       updateSubjects();
-      fillSelect($("#categoryId"), "All categories", taxonomy.categories, item => item.id, item => `${item.name} · ${item.type}`);
       fillSelect($("#itemType"), "All types", data.item_types || [], item => item, item => item);
       fillSelect($("#condition"), "All conditions", data.conditions || [], item => item, item => item);
     } catch (error) {
@@ -223,6 +226,8 @@
     loadListings(1);
   });
   $("#department").addEventListener("change", () => {
+    $("#subject").value = "";
+    $("#categoryId").value = "";
     updateSubjects();
     loadListings(1);
   });
