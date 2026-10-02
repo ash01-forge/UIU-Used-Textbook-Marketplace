@@ -48,6 +48,7 @@ http://localhost/UIU-Used-Textbook-Marketplace/
      C:\xampp\htdocs\UIU-Used-Textbook-Marketplace\database\migrations\001_align_to_target_schema.sql
      ```
 5. The current fresh-install `bookbridge.sql` includes the user department and category relationship columns. Older installations missing those columns need `database/migrations/002_category_relationship_columns.sql` before registration or category management. This additive migration preserves existing values. Do not rerun migration 001 on a fresh install.
+6. Older installations where `listings.subject` is still `NOT NULL` need `database/migrations/003_nullable_listing_subject.sql`. It aligns the column with the API's optional subject and the fresh-install schema, preserving existing listing values. It can safely be applied again. Fresh installs already allow a missing subject.
 
 ### Option B: Using MySQL Command Line
 

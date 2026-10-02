@@ -177,6 +177,10 @@ echo "Health check: OK (Database connected)\n";
 
 // Connect to database using shared helper (no hardcoded credentials)
 $pdo = getDbConnection();
+$originalRows = [];
+foreach (['users', 'listings'] as $table) {
+    $originalRows[$table] = $pdo->query("SELECT * FROM $table ORDER BY id")->fetchAll(PDO::FETCH_ASSOC);
+}
 
 $tag = substr(md5(microtime(true) . mt_rand()), 0, 8);
 $testPassword = 'ValidTestPassword123!';
@@ -784,12 +788,16 @@ try {
             echo "   Deleted $c test user(s)\n";
         }
 
-        // Verify baseline demo users (1-5) and listings (1-7) are intact
-        $demoUserCount = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE id IN (1, 2, 3, 4, 5)")->fetchColumn();
-        $demoListingCount = (int) $pdo->query("SELECT COUNT(*) FROM listings WHERE id IN (1, 2, 3, 4, 5, 6, 7)")->fetchColumn();
-
-        check($demoUserCount === 5, "Baseline demo users (IDs 1-5) preserved ($demoUserCount/5)");
-        check($demoListingCount === 7, "Baseline listings (IDs 1-7) preserved ($demoListingCount/7)");
+        // Compare actual pre-run rows instead of assuming a pristine seed database.
+        foreach ($originalRows as $table => $rows) {
+            $lookup = $pdo->prepare("SELECT * FROM $table WHERE id = ?");
+            $unchanged = true;
+            foreach ($rows as $original) {
+                $lookup->execute([$original['id']]);
+                if ($lookup->fetch(PDO::FETCH_ASSOC) !== $original) $unchanged = false;
+            }
+            check($unchanged, "All original $table rows preserved");
+        }
 
         // Verify all test users were deleted
         $remUsers = (int) $pdo->query("SELECT COUNT(*) FROM users WHERE email LIKE '%{$tag}%'")->fetchColumn();

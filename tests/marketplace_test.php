@@ -2,7 +2,8 @@
 // Reject HTTP execution before loading configuration or touching the database.
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit('CLI only'); }
 require_once __DIR__ . '/../config/db.php';
-if (getAppConfig()['db']['dbname'] !== 'bookbridge_review_20261002' || getAppConfig()['app']['base_url'] !== 'http://localhost/UIU-Used-Textbook-Marketplace-main-review') { fwrite(STDERR, "Marketplace tests require the isolated review database and checkout.\n"); exit(1); }
+$config = getAppConfig();
+if (!str_starts_with($config['db']['dbname'], 'bookbridge_review_') || $config['app']['base_url'] !== 'http://localhost/UIU-Used-Textbook-Marketplace-main-review') { fwrite(STDERR, "Marketplace tests require an isolated bookbridge_review_ database and review checkout.\n"); exit(1); }
 $db = getDbConnection();
 $base = rtrim(getAppConfig()['app']['base_url'], '/') . '/api/marketplace/';
 $tag = 'market_test_' . bin2hex(random_bytes(6));

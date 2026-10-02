@@ -78,6 +78,18 @@ try {
     releaseAssert((int)$testDb->lastInsertId()>5, 'fresh schema supports registration without migration 002');
     $testDb->query('SELECT department,subject FROM categories')->fetchAll();
     releaseAssert(true, 'fresh schema supports category relationship queries');
+    // Reproduce the legacy subject constraint, then verify the additive repair.
+    $originalListings = $testDb->query('SELECT * FROM listings ORDER BY id')->fetchAll();
+    $testDb->exec('ALTER TABLE listings MODIFY COLUMN subject VARCHAR(100) NOT NULL');
+    $migration = file_get_contents(__DIR__.'/../database/migrations/003_nullable_listing_subject.sql');
+    $testDb->exec($migration);
+    releaseAssert($testDb->query('SELECT * FROM listings ORDER BY id')->fetchAll() === $originalListings,
+        'migration 003 preserves every existing listing value');
+    $testDb->exec($migration);
+    $testDb->exec("INSERT INTO listings (seller_id,title,course_code,department,price,description) VALUES (2,'Optional subject regression','CSE-101','CSE',100,'Test without a subject')");
+    $optionalListing = (int)$testDb->lastInsertId();
+    releaseAssert($testDb->query("SELECT subject FROM listings WHERE id=$optionalListing")->fetchColumn() === null,
+        'migration 003 is repeatable and permits an omitted listing subject');
     $testDb->exec("UPDATE purchase_requests SET status='completed',completed_at=NOW() WHERE id=1");
     $testDb->exec("UPDATE listings SET status='sold' WHERE id=1");
 
