@@ -5,22 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Seller Dashboard | UIU Books</title>
   <link rel="stylesheet" href="seller.css">
+  <link rel="stylesheet" href="workflow.css">
+  <script defer src="auth.js?v=20261002-auth-v7"></script>
+  <script defer src="seller.js?v=20261002-seller-v2"></script>
+  <style>body[data-auth-checking] main{visibility:hidden}</style>
 </head>
-<body>
-  <nav><a class="brand" href="index.html">UIU Books <span>Marketplace</span></a><div><a href="add-listing.html">Add listing</a><a href="seller-sales.html">Sales history</a></div></nav>
+<body data-auth-checking>
+  <nav><a class="brand" href="index.html">UIU Books <span>Marketplace</span></a><div><a href="add-listing.html">Add listing</a><a href="seller-sales.html">Sales history</a><a href="messages.html">Messages</a><button type="button" class="secondary" data-auth-logout>Sign out</button></div></nav>
   <main class="shell">
-    <header class="hero"><div><p class="eyebrow">SELLER DASHBOARD</p><h1>Hello, Rafiul</h1><p>Manage your textbook listings and campus sales.</p></div><a class="primary link-button" href="add-listing.html">+ Add new listing</a></header>
-    <section class="stats">
-      <article><span>Total listings</span><strong id="totalListings">1</strong></article>
-      <article><span>Active listings</span><strong id="activeListings">00</strong></article>
-      <article><span>Books sold</span><strong>1</strong></article>
-      <article><span>Total revenue</span><strong>৳450</strong></article>
-      <article><span>Seller rating</span><strong>4.8</strong></article>
+    <header class="hero"><div><p class="eyebrow">SELLER DASHBOARD</p><h1 id="sellerGreeting">Seller Dashboard</h1><p>Manage listings, respond to buyers and track completed sales.</p></div><a class="primary link-button" href="add-listing.html">+ Add new listing</a></header>
+    <div id="sellerDashboardError" class="workflow-alert workflow-error" role="alert" hidden></div>
+    <div id="sellerDashboardLoading" class="workflow-loading" role="status">Loading seller dashboard…</div>
+    <section class="stats" id="sellerStats" aria-label="Seller statistics" hidden>
+      <article><span>Total listings</span><strong id="totalListings">—</strong></article>
+      <article><span>Available</span><strong id="activeListings">—</strong></article>
+      <article><span>Pending review</span><strong id="pendingListings">—</strong></article>
+      <article><span>Sold listings</span><strong id="soldListings">—</strong></article>
+      <article><span>Revenue</span><strong id="sellerRevenue">Unavailable</strong></article>
+      <article><span>Seller rating</span><strong id="sellerRating">—</strong></article>
+      <article><span>Active requests</span><strong id="activeSellerRequests">—</strong></article>
     </section>
-    <section class="panel"><div class="panel-head"><div><h2>My listings</h2><p>New submissions remain pending until Admin approval.</p></div></div>
-      <div class="table-wrap"><table><thead><tr><th>Book</th><th>Course</th><th>Price</th><th>Condition</th><th>Status</th></tr></thead><tbody id="sellerListings"><tr><td>Data Structures and Algorithms</td><td>CSE-2101</td><td>৳450</td><td>Like New</td><td><span class="badge sold">Sold</span></td></tr></tbody></table></div>
+    <p id="sellerRevenueNote" class="workflow-muted" hidden>Revenue is unavailable because completed purchases do not store transaction-time prices.</p>
+
+    <section class="panel workflow-section">
+      <div class="panel-head"><div><h2>My listings</h2><p>Edits to rejected or change-requested listings return them to admin review.</p></div></div>
+      <form id="sellerListingFilters" class="workflow-filters">
+        <input id="sellerListingSearch" type="search" maxlength="100" placeholder="Search title, author or course">
+        <select id="sellerListingStatus">
+          <option value="">All statuses</option><option value="pending_approval">Pending review</option><option value="available">Available</option><option value="changes_requested">Changes requested</option><option value="rejected">Rejected</option><option value="sold">Sold</option>
+        </select>
+        <button class="primary" type="submit">Filter</button><button class="secondary" id="sellerListingReset" type="button">Reset</button>
+      </form>
+      <div id="sellerListingsError" class="workflow-alert workflow-error" role="alert" hidden></div>
+      <div id="sellerListingsLoading" class="workflow-loading" hidden>Loading listings…</div>
+      <div id="sellerListingsEmpty" class="workflow-empty" hidden>No listings match these filters.</div>
+      <div class="table-wrap" id="sellerListingsWrap" hidden><table><thead><tr><th>Book / course</th><th>Price</th><th>Condition</th><th>Status / feedback</th><th>Actions</th></tr></thead><tbody id="sellerListings"></tbody></table></div>
+      <div id="sellerListingsPagination" class="admin-pagination" hidden></div>
+    </section>
+
+    <section class="panel workflow-section">
+      <div class="panel-head"><div><h2>Purchase requests</h2><p>Accept one buyer, decline requests, or complete an accepted Cash on Meet transaction.</p></div></div>
+      <form id="sellerRequestFilters" class="workflow-filters"><select id="sellerRequestStatus"><option value="active">Active requests</option><option value="">All requests</option><option value="pending">Pending</option><option value="accepted">Accepted</option><option value="declined">Declined</option><option value="completed">Completed</option><option value="cancelled">Cancelled</option></select><button class="primary" type="submit">Apply</button></form>
+      <div id="sellerRequestsError" class="workflow-alert workflow-error" role="alert" hidden></div>
+      <div id="sellerRequestsLoading" class="workflow-loading" hidden>Loading requests…</div>
+      <div id="sellerRequestsEmpty" class="workflow-empty" hidden>No purchase requests found.</div>
+      <div id="sellerRequestsList" class="workflow-list"></div>
+    </section>
+
+    <section class="panel workflow-section">
+      <div class="panel-head"><div><h2>Buyer reviews</h2><p>Ratings submitted for completed purchases.</p></div></div>
+      <div id="sellerReviewsError" class="workflow-alert workflow-error" role="alert" hidden></div>
+      <div id="sellerReviewsLoading" class="workflow-loading" hidden>Loading reviews…</div>
+      <div id="sellerReviewsEmpty" class="workflow-empty" hidden>No reviews yet.</div>
+      <div id="sellerReviewsList" class="workflow-list"></div>
     </section>
   </main>
-  <script src="seller.js"></script>
 </body>
 </html>

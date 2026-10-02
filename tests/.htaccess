@@ -1,0 +1,5 @@
+# Deny all web access to the tests/ directory.
+# Test scripts are CLI-only and must never be run via a browser.
+# They create and delete database records as part of their work.
+Order deny,allow
+Deny from all

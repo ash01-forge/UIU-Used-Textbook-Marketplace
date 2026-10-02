@@ -1,11 +1,43 @@
 <!doctype html>
 <html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Add Listing | UIU Books</title><link rel="stylesheet" href="seller.css"></head>
-<body><nav><a class="brand" href="seller-dashboard.html">UIU Books <span>Marketplace</span></a><a href="seller-dashboard.html">Back to dashboard</a></nav>
-<main class="shell"><form id="listingForm" class="form-card"><p class="eyebrow">NEW LISTING</p><h1>Add a textbook</h1><p>Provide accurate details. The Admin will review this listing before publication.</p><div class="form-grid">
-  <label class="full">Book title<input id="title" required></label><label>Course code<input id="courseCode" placeholder="CSE-3201" required></label>
-  <label>Department<select id="department"><option>CSE</option><option>EEE</option><option>BBA</option><option>Mathematics</option></select></label>
-  <label>Condition<select id="condition"><option>New</option><option>Like New</option><option>Good</option><option>Fair</option></select></label>
-  <label>Price (BDT)<input id="price" type="number" min="1" required></label><label class="full">Description<textarea id="description" required></textarea></label>
-  <button class="primary full" type="submit">Submit for approval</button>
-</div></form></main><script src="seller.js"></script></body></html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Listing | UIU Books</title>
+  <link rel="stylesheet" href="seller.css">
+  <link rel="stylesheet" href="workflow.css">
+  <script defer src="auth.js?v=20261002-auth-v7"></script>
+  <script defer src="seller.js?v=20261002-seller-v2"></script>
+  <style>body[data-auth-checking] main{visibility:hidden}</style>
+</head>
+<body data-auth-checking>
+  <nav><a class="brand" href="seller-dashboard.html">UIU Books <span>Marketplace</span></a><a href="seller-dashboard.html">Back to dashboard</a></nav>
+  <main class="shell">
+    <form id="listingForm" class="form-card" enctype="multipart/form-data">
+      <p class="eyebrow">SELLER LISTING</p>
+      <h1 id="listingHeading">Add a listing</h1>
+      <p>Provide accurate details. New listings and resubmissions are reviewed by an administrator.</p>
+      <div id="listingFeedback" class="workflow-alert workflow-error" hidden></div>
+      <div id="listingLoading" class="workflow-loading" hidden>Loading listing…</div>
+      <div id="listingError" class="workflow-alert workflow-error" role="alert" hidden></div>
+      <div id="listingMessage" class="workflow-alert workflow-success" role="status" hidden></div>
+      <input id="listingId" type="hidden" value="">
+      <div class="form-grid">
+        <label class="full">Book title<input id="title" maxlength="200" required></label>
+        <label>Author<input id="author" maxlength="150"></label>
+        <label>Edition<input id="edition" maxlength="50"></label>
+        <label>Course code<input id="courseCode" maxlength="30" placeholder="CSE-3201" required></label>
+        <label>Department<input id="department" maxlength="100" required></label>
+        <label>Subject<input id="subject" maxlength="100"></label>
+        <label>Item type<select id="itemType" required><option>Textbook</option><option>Notes</option><option>Lab Manual</option></select></label>
+        <label>Condition<select id="condition" required><option>New</option><option>Like New</option><option>Good</option><option>Fair</option><option>Poor</option></select></label>
+        <label>Price (BDT)<input id="price" type="number" min="0.01" max="999999.99" step="0.01" required></label>
+        <label class="full">Description<textarea id="description" minlength="5" required></textarea></label>
+        <label class="full">Cover image (JPG, PNG or WebP; max 2 MB)<input id="listingImage" type="file" accept="image/jpeg,image/png,image/webp"></label>
+        <input id="imageUrl" type="hidden" value="">
+        <button id="listingSubmit" class="primary full" type="submit">Submit for approval</button>
+      </div>
+    </form>
+  </main>
+</body>
+</html>

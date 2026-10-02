@@ -1,0 +1,7 @@
+# Disable PHP and script execution in upload directories
+<FilesMatch "\.(php|phtml|php3|php4|php5|php7|php8|phps|phar|cgi|pl|exe|sh)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+Options -ExecCGI -Indexes
+php_flag engine off

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin Dashboard | UIU Books</title>
+  <link rel="stylesheet" href="seller.css">
+  <link rel="stylesheet" href="admin.css">
+  <script defer src="auth.js?v=20261002-auth-v7"></script>
+  <script defer src="admin.js?v=20261001-admin-v2"></script>
+  <style>body[data-auth-checking] main { visibility: hidden; }</style>
+</head>
+<body data-auth-checking>
+  <nav>
+    <a class="brand" href="index.html">UIU Books <span>Marketplace</span></a>
+    <div>
+      <span id="adminNavName" style="font-size:14px;color:#555;margin-right:8px"></span>
+      <button type="button" class="secondary" data-auth-logout>Sign out</button>
+    </div>
+  </nav>
+
+  <main class="shell">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">ADMIN PORTAL</p>
+        <h1 id="adminGreeting">Admin Dashboard</h1>
+        <p>Moderate listings, manage categories and view sales reports.</p>
+      </div>
+    </header>
+
+    <!-- Tab navigation -->
+    <nav class="admin-tabs" role="tablist">
+      <button role="tab" aria-selected="true"  id="tab-button-dashboard" aria-controls="tab-dashboard" data-tab="dashboard"   class="tab-btn active">Dashboard</button>
+      <button role="tab" aria-selected="false" id="tab-button-moderation" aria-controls="tab-moderation" data-tab="moderation"  class="tab-btn">Moderation</button>
+      <button role="tab" aria-selected="false" id="tab-button-categories" aria-controls="tab-categories" data-tab="categories"  class="tab-btn">Categories</button>
+      <button role="tab" aria-selected="false" id="tab-button-reports" aria-controls="tab-reports" data-tab="reports"     class="tab-btn">Sales Report</button>
+    </nav>
+
+    <!-- ═══════════════════════════════════ DASHBOARD ═══════════════════════════════════ -->
+    <section id="tab-dashboard" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-dashboard">
+      <div id="dashboardError" class="admin-alert admin-alert-error" hidden></div>
+      <div id="dashboardLoading" class="admin-loading">Loading dashboard…</div>
+
+      <div class="stats" id="dashboardStats" hidden>
+        <article>
+          <span>Pending review</span>
+          <strong id="statPending">—</strong>
+        </article>
+        <article>
+          <span>Available listings</span>
+          <strong id="statAvailable">—</strong>
+        </article>
+        <article>
+          <span>Sold listings</span>
+          <strong id="statSold">—</strong>
+        </article>
+        <article>
+          <span>Completed sales</span>
+          <strong id="statSales">—</strong>
+        </article>
+        <article>
+          <span>Revenue</span>
+          <strong id="statRevenue" title="Revenue is unavailable for this report.">N/A</strong>
+        </article>
+      </div>
+
+      <div class="stats" id="dashboardUserStats" hidden>
+        <article>
+          <span>Buyers</span>
+          <strong id="statBuyers">—</strong>
+        </article>
+        <article>
+          <span>Sellers</span>
+          <strong id="statSellers">—</strong>
+        </article>
+        <article>
+          <span>Admins</span>
+          <strong id="statAdmins">—</strong>
+        </article>
+        <article>
+          <span>Changes requested</span>
+          <strong id="statChanges">—</strong>
+        </article>
+        <article>
+          <span>Rejected listings</span>
+          <strong id="statRejected">—</strong>
+        </article>
+      </div>
+
+      <p class="admin-note" id="revenueNote" hidden>
+        Revenue is unavailable for this report.
+      </p>
+    </section>
+
+    <!-- ═══════════════════════════════════ MODERATION ═══════════════════════════════════ -->
+    <section id="tab-moderation" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-moderation" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <div><h2>Pending Listings</h2><p>Review and approve, reject, or request changes for submitted listings.</p></div>
+        </div>
+
+        <!-- Filters -->
+        <form id="modFiltersForm" class="admin-filters">
+          <input type="search" id="modSearch" name="search" placeholder="Search title, author, course…" maxlength="100">
+          <input type="text"   id="modDept"   name="department" placeholder="Department" maxlength="100">
+          <select id="modType" name="type">
+            <option value="">All types</option>
+            <option value="Textbook">Textbook</option>
+            <option value="Notes">Notes</option>
+            <option value="Lab Manual">Lab Manual</option>
+          </select>
+          <select id="modSort" name="sort">
+            <option value="created_at">Date submitted</option>
+            <option value="title">Title</option>
+          </select>
+          <select id="modDir" name="direction">
+            <option value="asc">Oldest first</option>
+            <option value="desc">Newest first</option>
+          </select>
+          <button type="submit" class="primary">Filter</button>
+          <button type="button" id="modResetBtn" class="secondary">Reset</button>
+        </form>
+
+        <div id="modError"   class="admin-alert admin-alert-error" hidden></div>
+        <div id="modLoading" class="admin-loading" hidden>Loading listings…</div>
+        <div id="modEmpty"   class="admin-empty"   hidden>No pending listings match the current filters.</div>
+
+        <div class="table-wrap" id="modTableWrap" hidden>
+          <table>
+            <thead>
+              <tr>
+                <th>Book / Course</th>
+                <th>Type</th>
+                <th>Seller</th>
+                <th>Price</th>
+                <th>Submitted</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="modTbody"></tbody>
+          </table>
+        </div>
+
+        <div id="modPagination" class="admin-pagination" hidden></div>
+      </div>
+
+      <!-- Review modal -->
+      <div id="reviewModal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-card">
+          <h3 id="modalTitle">Review Listing</h3>
+          <p id="modalListingTitle" class="modal-listing-title"></p>
+          <div id="modalDetails" class="listing-details"></div>
+
+          <div id="modalError" class="admin-alert admin-alert-error" hidden></div>
+
+          <form id="reviewForm">
+            <input type="hidden" id="reviewListingId" name="listing_id">
+            <fieldset>
+              <legend>Decision</legend>
+              <label class="radio-label">
+                <input type="radio" name="action" value="approve" required> Approve
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="action" value="reject"> Reject
+              </label>
+              <label class="radio-label">
+                <input type="radio" name="action" value="changes_requested"> Request changes
+              </label>
+            </fieldset>
+            <div id="feedbackGroup" class="form-group" hidden>
+              <label for="reviewFeedback">Feedback <span class="required-mark">*</span></label>
+              <textarea id="reviewFeedback" name="admin_feedback" rows="4" maxlength="2000"
+                placeholder="Explain the decision to the seller…"></textarea>
+              <small id="feedbackHint" class="field-hint">Required when rejecting or requesting changes.</small>
+            </div>
+            <div class="modal-actions">
+              <button type="submit" class="primary" id="reviewSubmitBtn">Submit</button>
+              <button type="button" class="secondary" id="reviewCancelBtn">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════ CATEGORIES ═══════════════════════════════════ -->
+    <section id="tab-categories" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-categories" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <div><h2>Categories</h2><p>Manage departments and subjects. Departments with linked records cannot be deleted.</p></div>
+          <button type="button" class="primary" id="catAddBtn">+ Add category</button>
+        </div>
+
+        <form id="catFiltersForm" class="admin-filters">
+          <input type="search" id="catSearch" name="search" placeholder="Search categories…" maxlength="100">
+          <select id="catFilterType" name="type">
+            <option value="">All types</option>
+            <option value="Department">Departments</option>
+            <option value="Subject">Subjects</option>
+          </select>
+          <select id="catFilterDepartment" name="department">
+            <option value="">All departments</option>
+          </select>
+          <button type="submit" class="primary">Filter</button>
+          <button type="button" id="catResetBtn" class="secondary">Reset</button>
+        </form>
+
+        <div id="catError"   class="admin-alert admin-alert-error" hidden></div>
+        <div id="catSuccess" class="admin-alert admin-alert-success" hidden></div>
+        <div id="catLoading" class="admin-loading" hidden>Loading categories…</div>
+        <div id="catEmpty"   class="admin-empty"   hidden>No categories found.</div>
+
+        <div class="table-wrap" id="catTableWrap" hidden>
+          <table>
+            <thead>
+              <tr><th>Name</th><th>Type</th><th>Department</th><th>Actions</th></tr>
+            </thead>
+            <tbody id="catTbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Add/Edit modal -->
+      <div id="catModal" class="modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="catModalTitle">
+        <div class="modal-card">
+          <h3 id="catModalTitle">Add Category</h3>
+          <div id="catModalError" class="admin-alert admin-alert-error" hidden></div>
+          <form id="catForm">
+            <input type="hidden" id="catFormId" name="id" value="">
+            <div class="form-group">
+              <label for="catFormName">Name <span class="required-mark">*</span></label>
+              <input type="text" id="catFormName" name="name" maxlength="100" required>
+            </div>
+            <div class="form-group" id="catTypeGroup">
+              <label for="catFormType">Type <span class="required-mark">*</span></label>
+              <select id="catFormType" name="type">
+                <option value="Department">Department</option>
+                <option value="Subject">Subject</option>
+              </select>
+            </div>
+            <div class="form-group" id="catDeptGroup" hidden>
+              <label for="catFormDept">Parent department <span class="required-mark">*</span></label>
+              <select id="catFormDept" name="department">
+                <option value="">— select department —</option>
+              </select>
+            </div>
+            <div class="modal-actions">
+              <button type="submit" class="primary" id="catSubmitBtn">Save</button>
+              <button type="button" class="secondary" id="catCancelBtn">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <!-- ═══════════════════════════════════ SALES REPORT ═══════════════════════════════════ -->
+    <section id="tab-reports" class="tab-panel" role="tabpanel" aria-labelledby="tab-button-reports" hidden>
+      <div class="panel">
+        <div class="panel-head">
+          <div><h2>Sales Report</h2><p>View completed transactions and filter by completion date.</p></div>
+        </div>
+
+        <form id="reportFiltersForm" class="admin-filters">
+          <label>From <input type="date" id="reportFrom" name="from" max="2099-12-31"></label>
+          <label>To   <input type="date" id="reportTo"   name="to"   max="2099-12-31"></label>
+          <button type="submit" class="primary">Apply</button>
+          <button type="button" id="reportResetBtn" class="secondary">Reset</button>
+        </form>
+
+        <div class="admin-alert admin-alert-warning" style="margin:12px 0">
+          ⚠️ Revenue is <strong>Unavailable</strong>: sales amounts cannot currently be reported.
+        </div>
+
+        <div id="reportError"   class="admin-alert admin-alert-error" hidden></div>
+        <div id="reportLoading" class="admin-loading" hidden>Loading report…</div>
+        <div id="reportEmpty"   class="admin-empty"   hidden>No completed sales match the current filters.</div>
+
+        <div id="reportSummary" class="admin-report-summary" hidden>
+          <strong id="reportTotalSales">0</strong> completed sales &nbsp;·&nbsp; Revenue: <strong>Unavailable</strong>
+        </div>
+
+        <div class="table-wrap" id="reportTableWrap" hidden>
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Listing</th>
+                <th>Buyer</th>
+                <th>Seller</th>
+                <th>Completed</th>
+                <th>Revenue</th>
+              </tr>
+            </thead>
+            <tbody id="reportTbody"></tbody>
+          </table>
+        </div>
+
+        <div id="reportPagination" class="admin-pagination" hidden></div>
+      </div>
+    </section>
+
+  </main>
+</body>
+</html>

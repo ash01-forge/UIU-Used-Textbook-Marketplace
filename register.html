@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Create account | UIU Books</title>
+  <link rel="stylesheet" href="seller.css">
+  <script defer src="auth.js?v=20261002-auth-v7"></script>
+</head>
+<body class="auth-page">
+  <main class="auth-card">
+    <a class="brand" href="index.html">UIU Books <span>Marketplace</span></a>
+    <p class="eyebrow">STUDENT ACCOUNT</p>
+    <h1>Create your account</h1>
+    <p>Register with your UIU email to buy or sell course materials.</p>
+    <form id="registerForm">
+      <label>Full name<input name="full_name" autocomplete="name" minlength="2" maxlength="100" required></label>
+      <label>UIU email<input name="email" type="email" autocomplete="email" maxlength="150" required></label>
+      <label>Password<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="255" required></label>
+      <label>Account type<select name="role" required><option value="">Choose a role</option><option value="buyer">Buyer</option><option value="seller">Seller</option></select></label>
+      <label>Student ID <span>(optional)</span><input name="student_id" autocomplete="off"></label>
+      <label>Department <span>(optional)</span><input name="department" autocomplete="organization"></label>
+      <button class="primary" type="submit">Create account</button>
+    </form>
+    <a class="secondary" href="index.html">Back to sign in</a>
+  </main>
+</body>
+</html>

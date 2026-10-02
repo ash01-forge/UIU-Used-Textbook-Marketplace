@@ -1,1 +1,41 @@
-<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Messages | UIU Books</title><link rel="stylesheet" href="buyer.css"></head><body><nav><a class="brand" href="buyer-dashboard.html">UIU Books <small>Marketplace</small></a><a href="buyer-dashboard.html">Dashboard</a></nav><main class="shell"><header><p class="eyebrow">BUYER MESSAGES</p><h1>Conversation</h1></header><section class="chat"><aside class="contacts"><div class="contact"><strong>Rafiul Islam</strong><small>Data Structures and Algorithms</small></div><div class="contact"><strong>Nusrat Jahan</strong><small>Calculus</small></div></aside><div class="conversation"><div id="messageList" class="messages"><div class="bubble">Hi! The book is still available.</div><div class="bubble me">Great. Can we meet at the UIU Library?</div><div class="bubble">Yes, tomorrow at 2:00 PM works.</div></div><form id="composer" class="composer"><input id="messageInput" placeholder="Write a message" autocomplete="off"><button class="primary" type="submit">Send</button></form></div></section></main><script src="buyer.js"></script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Messages | UIU Books</title>
+	<link rel="stylesheet" href="buyer.css">
+	<link rel="stylesheet" href="workflow.css">
+	<script defer src="auth.js?v=20261002-auth-v7"></script>
+	<script defer src="messages.js?v=20261002-messages-v1"></script>
+</head>
+<body data-auth-checking>
+	<nav><a class="brand" href="index.html">UIU Books <small>Marketplace</small></a><a id="messagesDashboardLink" href="index.html">Dashboard</a><button type="button" class="secondary" data-auth-logout>Sign out</button></nav>
+	<main class="shell">
+		<header><p class="eyebrow">CAMPUS MESSAGES</p><h1>Conversations</h1></header>
+		<div id="messagesError" class="workflow-alert workflow-error" role="alert" hidden></div>
+		<section class="chat workflow-chat">
+			<aside class="contacts" aria-label="Conversations">
+				<div id="conversationsLoading" class="workflow-loading" hidden>Loading conversations…</div>
+				<div id="conversationsEmpty" class="workflow-empty" hidden>No conversations yet.</div>
+				<div id="conversationList"></div>
+			</aside>
+			<div class="conversation">
+				<header class="workflow-chat-header">
+					<strong id="currentPartner">Choose a conversation</strong>
+					<small id="currentListing"></small>
+				</header>
+				<div id="threadLoading" class="workflow-loading" hidden>Loading messages…</div>
+				<div id="threadEmpty" class="workflow-empty" hidden>No messages in this conversation yet.</div>
+				<div id="messageList" class="messages" aria-live="polite"></div>
+				<div id="sendError" class="workflow-alert workflow-error" role="alert" hidden></div>
+				<form id="composer" class="composer">
+					<label class="visually-hidden" for="messageInput">Message</label>
+					<input id="messageInput" maxlength="2000" placeholder="Write a message" autocomplete="off" required disabled>
+					<button id="sendMessage" class="primary" type="submit" disabled>Send</button>
+				</form>
+			</div>
+		</section>
+	</main>
+</body>
+</html>
