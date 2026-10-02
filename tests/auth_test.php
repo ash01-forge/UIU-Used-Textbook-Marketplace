@@ -176,6 +176,10 @@ if ($ping['code'] === 0) {
 }
 
 
+require_once __DIR__ . '/../config/db.php';
+$pdo = getDbConnection();
+$originalUsers = $pdo->query('SELECT * FROM users ORDER BY id')->fetchAll(PDO::FETCH_ASSOC);
+
 // ═══════════════════════════════════════════════════════════════════════
 // Test 1 — Valid Registration (Buyer)
 // ═══════════════════════════════════════════════════════════════════════
@@ -473,27 +477,10 @@ try {
         [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC]
     );
 
-    $demoRows = $pdo->query(
-        "SELECT id, full_name, email, password_hash, role, department
-         FROM users WHERE id IN (1, 2, 3) ORDER BY id ASC"
-    )->fetchAll();
-
-    check(count($demoRows) === 3, 'All 3 demo user rows exist (IDs 1, 2, 3)');
-
-    $originalHash = '$2y$10$ZD/vphtqRO7CilIpIsRPHezUcboDFwoJC.LrMOygHiCGrT7Bb3XJa';
-    $expected = [
-        1 => ['email' => 'admin@uiu.ac.bd',  'role' => 'admin',  'dept' => 'Administration'],
-        2 => ['email' => 'seller@uiu.ac.bd', 'role' => 'seller', 'dept' => 'CSE'],
-        3 => ['email' => 'buyer@uiu.ac.bd',  'role' => 'buyer',  'dept' => 'CSE'],
-    ];
-
-    foreach ($demoRows as $row) {
-        $id  = (int) $row['id'];
-        $exp = $expected[$id];
-        check($row['email']         === $exp['email'],        "Demo $id email preserved");
-        check($row['role']          === $exp['role'],         "Demo $id role preserved");
-        check($row['department']    === $exp['dept'],         "Demo $id department preserved");
-        check($row['password_hash'] === $originalHash,       "Demo $id password_hash NOT reset");
+    $lookup = $pdo->prepare('SELECT * FROM users WHERE id = ?');
+    foreach ($originalUsers as $original) {
+        $lookup->execute([$original['id']]);
+        check($lookup->fetch(PDO::FETCH_ASSOC) === $original, 'Original user ' . $original['id'] . ' preserved including password and role');
     }
 
 } catch (Exception $e) {
