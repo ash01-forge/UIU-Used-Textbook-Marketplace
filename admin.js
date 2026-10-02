@@ -136,7 +136,7 @@
       $("#statAvailable").textContent = displayCount(listings.available);
       $("#statSold").textContent = displayCount(listings.sold);
       $("#statSales").textContent = displayCount(data.completed_sales_count);
-      $("#statRevenue").textContent = data.revenue === null ? "Unavailable" : "—";
+      $("#statRevenue").textContent = formatMoney(data.revenue);
       $("#statBuyers").textContent = displayCount(users.buyer);
       $("#statSellers").textContent = displayCount(users.seller);
       $("#statAdmins").textContent = displayCount(users.admin);
@@ -144,7 +144,8 @@
       $("#statRejected").textContent = displayCount(listings.rejected);
       setVisible(stats, true);
       setVisible(userStats, true);
-      setVisible($("#revenueNote"), data.revenue === null);
+      $("#revenueNote").textContent = data.revenue_note || "";
+      setVisible($("#revenueNote"), Boolean(data.revenue_note));
     } catch (error) {
       if (!isLatest("dashboard", version)) return;
       showError(errorBox, error, loadDashboard);
@@ -504,6 +505,8 @@
       state.reportPage = pagination.page || state.reportPage;
       state.reportTotalPages = Math.max(1, pagination.total_pages || 1);
       $("#reportTotalSales").textContent = displayCount(data.summary?.completed_sales_count);
+      $("#reportRevenue").textContent = formatMoney(data.revenue);
+      $("#reportRevenueNote").textContent = data.revenue_note || "";
       setVisible($("#reportSummary"), true);
       const body = $("#reportTbody");
       body.replaceChildren();
@@ -514,7 +517,7 @@
         addCell(row, transaction.buyer_name);
         addCell(row, transaction.seller_name);
         addCell(row, formatDate(transaction.completed_at));
-        addCell(row, "Unavailable");
+        addCell(row, transaction.sale_price == null ? "Not recorded" : formatMoney(transaction.sale_price));
         body.append(row);
       });
       const hasRows = (data.transactions || []).length > 0;

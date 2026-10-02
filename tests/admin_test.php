@@ -462,7 +462,7 @@ try {
     adminCheck($dashboard['status'] === 200 && is_int($dashboardData['pending_review_count'] ?? null), 'Admin dashboard returns pending count');
     adminCheck(is_array($dashboardData['listing_counts'] ?? null) && is_array($dashboardData['user_counts'] ?? null), 'Admin dashboard returns listing and role counts');
     adminCheck(is_int($dashboardData['completed_sales_count'] ?? null), 'Admin dashboard returns completed sales count');
-    adminCheck(array_key_exists('revenue', $dashboardData) && $dashboardData['revenue'] === null, 'Dashboard does not invent revenue');
+    adminCheck(array_key_exists('revenue', $dashboardData) && is_numeric($dashboardData['revenue']), 'Dashboard returns recorded revenue');
     adminCheck(!isset($dashboardData['password_hash']), 'Dashboard does not expose password hashes');
 
     $purchase = $db->prepare(
@@ -479,7 +479,7 @@ try {
     $reportData = $report['json']['data'] ?? [];
     adminCheck($report['status'] === 200 && ($reportData['summary']['completed_sales_count'] ?? 0) >= 1, 'Sales report counts completed transactions within date filter');
     adminCheck(count($reportData['transactions'] ?? []) === 1 && ($reportData['pagination']['per_page'] ?? 0) === 1, 'Sales report rows are paginated');
-    adminCheck(array_key_exists('revenue', $reportData) && $reportData['revenue'] === null, 'Sales report omits fabricated revenue');
+    adminCheck(array_key_exists('revenue', $reportData) && is_numeric($reportData['revenue']) && ($reportData['summary']['unpriced_sales_count'] ?? 0) >= 1, 'Sales report returns recorded revenue and identifies legacy unpriced sales');
     adminCheck(!isset($reportData['transactions'][0]['password_hash']), 'Sales report excludes password hashes');
     $badDate = adminRequest(adminUrl('sales-report.php', ['from' => '2026-99-40']), 'GET', null, [], $adminJar);
     $badRange = adminRequest(adminUrl('sales-report.php', ['from' => '2026-10-02', 'to' => '2026-10-01']), 'GET', null, [], $adminJar);

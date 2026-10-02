@@ -86,7 +86,8 @@
       $("#sellerRevenue").textContent = stats.revenue === null ? "Unavailable" : money(stats.revenue);
       $("#sellerRating").textContent = stats.seller_rating === undefined ? "—" : `${stats.seller_rating} / 5 (${stats.review_count ?? 0})`;
       $("#activeSellerRequests").textContent = String(stats.active_requests_count ?? "—");
-      visible($("#sellerRevenueNote"), stats.revenue === null);
+      $("#sellerRevenueNote").textContent = stats.revenue_note || "";
+      visible($("#sellerRevenueNote"), Boolean(stats.revenue_note));
       visible($("#sellerStats"), true);
     } catch (error) {
       showError("#sellerDashboardError", error);

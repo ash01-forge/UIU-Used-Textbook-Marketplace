@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="seller.css">
   <link rel="stylesheet" href="admin.css">
   <script defer src="auth.js?v=20261002-auth-v7"></script>
-  <script defer src="admin.js?v=20261001-admin-v2"></script>
+  <script defer src="admin.js?v=20261003-sale-price1"></script>
   <style>body[data-auth-checking] main { visibility: hidden; }</style>
 </head>
 <body data-auth-checking>
@@ -275,7 +275,8 @@
         <div id="reportEmpty"   class="admin-empty"   hidden>No completed sales match the current filters.</div>
 
         <div id="reportSummary" class="admin-report-summary" hidden>
-          <strong id="reportTotalSales">0</strong> completed sales &nbsp;·&nbsp; Revenue: <strong>Unavailable</strong>
+          <strong id="reportTotalSales">0</strong> completed sales &nbsp;·&nbsp; Recorded revenue: <strong id="reportRevenue">0</strong>
+          <p id="reportRevenueNote"></p>
         </div>
 
         <div class="table-wrap" id="reportTableWrap" hidden>

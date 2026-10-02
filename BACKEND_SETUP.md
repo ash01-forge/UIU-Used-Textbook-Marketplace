@@ -172,3 +172,7 @@ The admin suite is CLI-only. It creates uniquely tagged temporary admin/buyer/se
 The admin endpoint behavior and schema limitations are documented in `API_CONTRACT.md` under **Admin Management**. No user-management endpoint is included because no user operations are defined by the current contract.
 
 Run the release-readiness regression suite with `C:\xampp\php\php.exe tests\release_readiness_test.php`. It requires permission to create/drop a temporary database. It verifies fresh schema compatibility, seed passwords, UIU email validation, and concurrent submissions through the actual review endpoint code. Its uniquely named test database is removed afterwards; it does not change application accounts, run application migrations, or reset application tables.
+
+### Recorded sale amounts
+
+Existing installations must run `database/migrations/004_sale_price_snapshot.sql` before deploying the updated APIs. It is repeatable and leaves earlier completed sales unpriced. Fresh installations include the column. A completed meetup records the locked listing price; later listing edits/relisting do not change historical amounts. Reports show recorded revenue and explicitly exclude unpriced older transactions.

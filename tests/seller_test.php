@@ -461,7 +461,7 @@ try {
     $stats = $dashStats['json']['data']['stats'] ?? [];
     check($dashStats['status'] === 200, 'Seller dashboard metrics retrieved');
     check(($stats['sold_listings'] ?? 0) >= 1, 'Dashboard reflects sold listing count');
-    check(array_key_exists('revenue', $stats) && $stats['revenue'] === null, 'Dashboard revenue is null per contract note');
+    check(array_key_exists('revenue', $stats) && is_numeric($stats['revenue']), 'Dashboard returns recorded revenue');
     check(!empty($stats['revenue_note']), 'Dashboard includes explanatory revenue note');
     $relistCompleted = apiRequest("{$baseUrl}/seller/mark-unsold.php", 'POST', ['id' => $listing1Id], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
     check($relistCompleted['status'] === 200, 'Completed-sale listing can be relisted');

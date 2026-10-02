@@ -292,7 +292,7 @@ The fresh-install schema is stored in `database/bookbridge.sql`. Upgrade scripts
 
 - Reports show completed-sales counts and transaction records.
 - Purchase requests do not store transaction-time sale prices.
-- Current editable listing prices are not treated as realized revenue.
+- Completed meetups store a listing-price snapshot for revenue, average order value and transaction amounts. Later listing edits do not change past revenue. Older transactions without a snapshot are labelled Not recorded and excluded from monetary totals.
 - Buyer savings are estimates.
 
 ## Security and Validation

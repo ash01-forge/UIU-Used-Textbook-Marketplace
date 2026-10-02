@@ -330,8 +330,8 @@ Every seller endpoint requires an authenticated session with `role === 'seller'`
       "changes_requested": 0,
       "rejected": 0,
       "sold_listings": 1,
-      "revenue": null,
-      "revenue_note": "Unavailable: completed purchases do not store transaction-time prices. Current listing prices are not realized sale amounts.",
+      "revenue": 0,
+      "revenue_note": "Earlier sales without recorded amounts are excluded from revenue.",
       "seller_rating": 4.8,
       "review_count": 1,
       "active_requests_count": 0
@@ -416,7 +416,7 @@ Response (HTTP 201 Created):
 
 #### 3.3.7 Sales History
 
-`GET /api/seller/sales-history.php` returns completed purchase-request records plus currently sold listings with no completed request. Completed records remain visible after relisting; pagination counts joined history rows consistently. Manual sold records have `purchase_request_id: null` and `completed_at: null`, with `sold_at` as a listing-update timestamp rather than a transaction-completion timestamp. The returned `price` is the current listing price, not realized revenue or a historical transaction price. No sale-time price snapshot exists.
+`GET /api/seller/sales-history.php` returns completed purchase-request records plus currently sold listings with no completed request. Completed records remain visible after relisting; pagination counts joined history rows consistently. Manual sold records have `purchase_request_id: null` and `completed_at: null`, with `sold_at` as a listing-update timestamp rather than a transaction-completion timestamp. The returned `price` is the current listing price, not realized revenue or a historical transaction price. The nullable `sale_price` is the immutable listing-price snapshot at meetup completion; older unknown amounts remain null.
 
 Example completed transaction:
 
@@ -630,13 +630,13 @@ Every endpoint requires an authenticated `admin` session. Guests receive HTTP 40
     },
     "user_counts": { "buyer": 2, "seller": 2, "admin": 1 },
     "completed_sales_count": 0,
-    "revenue": null,
-    "revenue_note": "Unavailable: completed purchases do not store transaction-time prices."
+    "revenue": 0,
+    "revenue_note": "Earlier sales without recorded amounts are excluded from revenue."
   }
 }
 ```
 
-Revenue is unavailable because `purchase_requests` has no transaction-time price snapshot. Current listing prices are not realized sale amounts and are not summed as revenue.
+Revenue sums `purchase_requests.sale_price` for completed transactions. Later listing price changes do not affect it. `unpriced_sales_count` discloses legacy sales excluded from the total; the average uses priced transactions only.
 
 #### Pending Listing Queue
 
@@ -716,3 +716,7 @@ No user-listing, role-change, account-deletion, password-reset, or bulk-user ope
 - HTTP 405: Unsupported method (`Allow` header is returned).
 - HTTP 409: Stale moderation transition, duplicate category, or referenced-category deletion.
 - HTTP 422: Invalid ID, filter, pagination, category data, action, or feedback.
+
+### Completed-sale price snapshots
+
+On accepted request completion, `sale_price` stores the current listing price in the same locked transaction as completion. It represents the app listing price at completion, not a verified external payment or negotiated cash amount. Admin report rows and seller history expose nullable `sale_price`. Dashboard/report `revenue` sums recorded completed sale prices only; `unpriced_sales_count` and `revenue_note` disclose older missing prices. Report `average_order_value` uses priced sales only. Report totals use the full date filter, independent of pagination. Manual mark-sold without a purchase request does not create recorded revenue.

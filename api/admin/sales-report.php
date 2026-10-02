@@ -4,6 +4,7 @@
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/response.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/sales.php';
 require_once __DIR__ . '/../../includes/admin.php';
 
 requireRole('admin');
@@ -42,18 +43,15 @@ $offset = ($page - 1) * $perPage;
 
 try {
     $db = getDbConnection();
-    $count = $db->prepare(
-        "SELECT COUNT(*) FROM purchase_requests pr WHERE {$where}"
-    );
-    $count->execute($parameters);
-    $total = (int) $count->fetchColumn();
+    $summary = saleSummary($db, $where, $parameters);
+    $total = $summary['completed_sales_count'];
 
     $query = $db->prepare(
         "SELECT pr.id AS purchase_request_id, pr.listing_id,
                 l.title AS listing_title, l.course_code,
                 buyer.full_name AS buyer_name,
                 seller.full_name AS seller_name,
-                pr.completed_at
+                pr.completed_at, pr.sale_price
          FROM purchase_requests pr
          LEFT JOIN listings l ON l.id = pr.listing_id
          LEFT JOIN users buyer ON buyer.id = pr.buyer_id
@@ -68,11 +66,12 @@ try {
     foreach ($transactions as &$transaction) {
         $transaction['purchase_request_id'] = (int) $transaction['purchase_request_id'];
         $transaction['listing_id'] = (int) $transaction['listing_id'];
+        $transaction['sale_price'] = $transaction['sale_price'] === null ? null : (float)$transaction['sale_price'];
     }
     unset($transaction);
 
     sendSuccessResponse('Completed sales report retrieved.', [
-        'summary' => ['completed_sales_count' => $total],
+        'summary' => $summary,
         'transactions' => $transactions,
         'filters' => ['from' => $from, 'to' => $to],
         'pagination' => [
@@ -81,8 +80,8 @@ try {
             'total' => $total,
             'total_pages' => (int) ceil($total / $perPage),
         ],
-        'revenue' => null,
-        'revenue_note' => 'Unavailable: purchase requests do not store transaction-time prices.',
+        'revenue' => $summary['revenue'],
+        'revenue_note' => $summary['revenue_note'],
     ]);
 } catch (Throwable $e) {
     error_log('Admin sales report query failed: ' . $e->getMessage());

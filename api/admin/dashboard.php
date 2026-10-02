@@ -1,13 +1,13 @@
 <?php
 /**
  * GET /api/admin/dashboard.php
- * Admin-only marketplace counts. Revenue is omitted because completed
- * purchases do not store a transaction-time price.
+ * Admin-only marketplace counts and recorded completed-sale revenue.
  */
 
 require_once __DIR__ . '/../../config/db.php';
 require_once __DIR__ . '/../../includes/response.php';
 require_once __DIR__ . '/../../includes/auth.php';
+require_once __DIR__ . '/../../includes/sales.php';
 
 requireRole('admin');
 
@@ -34,17 +34,13 @@ try {
         $userCounts[$row['role']] = (int) $row['total'];
     }
 
-    $completedSales = (int) $db->query(
-        "SELECT COUNT(*) FROM purchase_requests WHERE status = 'completed'"
-    )->fetchColumn();
+    $summary = saleSummary($db);
 
     sendSuccessResponse('Admin dashboard counts retrieved.', [
         'pending_review_count' => $listingCounts['pending_approval'],
         'listing_counts' => $listingCounts,
         'user_counts' => $userCounts,
-        'completed_sales_count' => $completedSales,
-        'revenue' => null,
-        'revenue_note' => 'Unavailable: completed purchases do not store transaction-time prices.',
+        ...$summary,
     ]);
 } catch (Throwable $e) {
     error_log('Admin dashboard query failed: ' . $e->getMessage());
