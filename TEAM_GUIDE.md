@@ -126,7 +126,7 @@ Use this if you do **not** yet have a `bookbridge_db` database on your machine.
    C:\xampp\htdocs\UIU-Used-Textbook-Marketplace\database\bookbridge.sql
    ```
 5. Click **Go**.
-6. The `bookbridge_db` database is created with all 7 tables and demo seed data — ready to use.
+6. The `bookbridge_db` database is created with seven core tables and two tracking tables and demo seed data — ready to use.
 
 > [!CAUTION]
 > **Do NOT run the migration script (`database/migrations/001_align_to_target_schema.sql`) after a fresh install.** The migration is only for upgrading an old pre-migration database. Running it on a fresh install will fail or produce duplicate data.
@@ -144,7 +144,7 @@ Use this **only** if you already had a `bookbridge_db` created before the backen
 4. Click **Go**.
 
 > [!NOTE]
-> If you are unsure which path applies to you, check your `bookbridge_db` → `users` table. If it has a column named `full_name`, you already have the migrated/fresh schema. Preserve the existing database. After a backup, apply only missing additive migrations 002–004; see the migrations guide. A fresh import is only for a new database, not a repair of existing records.
+> If you are unsure which path applies to you, check your `bookbridge_db` → `users` table. If it has a column named `full_name`, you already have the migrated/fresh schema. Preserve the existing database. After a backup, apply only missing additive migrations 002–005; see the migrations guide. A fresh import is only for a new database, not a repair of existing records.
 
 ---
 

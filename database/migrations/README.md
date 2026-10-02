@@ -29,6 +29,7 @@ This folder contains numbered SQL migration scripts for the BookBridge marketpla
 | `002_category_relationship_columns.sql` | Adds nullable category department/subject compatibility fields and the optional user department field; preserves populated values and only infers unambiguous subject parents from existing listings. | Required on older schemas missing these fields            |
 | `003_nullable_listing_subject.sql` | Allows omitted listing subjects without altering existing values. | Required where `listings.subject` is NOT NULL |
 | `004_sale_price_snapshot.sql` | Adds nullable completed-sale price snapshots; leaves unknown historical prices NULL. | Required where `purchase_requests.sale_price` is missing |
+| `005_user_activity_tracking.sql` | Adds daily authenticated activity and immutable tracking-start metadata; matches signed/unsigned legacy user IDs. | Required before using Active Users reports |
 
 ---
 
@@ -38,7 +39,7 @@ This folder contains numbered SQL migration scripts for the BookBridge marketpla
 2. Select `bookbridge_db` in the left panel.
 3. Click the **Import** tab.
 4. For a legacy backup, apply `001_align_to_target_schema.sql` first if it has not already been applied. Then apply `002_category_relationship_columns.sql` for category CRUD support.
-5. For a current fresh `bookbridge.sql` install, migrations 001–004 are already reflected in the schema and should not be reapplied as a legacy upgrade. On existing installations, apply 002, 003 and 004 only where the corresponding fields or compatibility changes are missing.
+5. For a current fresh `bookbridge.sql` install, migrations 001–005 are already reflected in the schema and should not be reapplied as a legacy upgrade. On existing installations, apply 002, 003, 004 and 005 only where the corresponding fields or compatibility changes are missing.
 
 ## Execution via Command Line (XAMPP MySQL)
 

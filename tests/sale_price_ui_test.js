@@ -11,6 +11,15 @@ const report={summary:{completed_sales_count:3,revenue:450.5,average_order_value
     {purchase_request_id:2,sale_price:0,completed_at:'2026-10-02 10:00:00'},
     {purchase_request_id:3,sale_price:450.5,completed_at:'2026-10-02 11:00:00'}]};
 const view=UI.reportView(React,report);
+report.summary.active_users=7;
+report.summary.activity_note='Unique authenticated accounts since tracking began.';
+assert.equal(UI.reportView(React,report).kpis.users,7);
+assert.ok(JSON.stringify(UI.reportView(React,report).note).includes('Unique authenticated accounts'));
+report.summary.active_users=0;
+assert.equal(UI.reportView(React,report).kpis.users,0);
+report.summary.active_users=null;
+assert.equal(UI.reportView(React,report).kpis.users,'Not recorded');
+assert.equal(UI.reportView(React,null).kpis.users,'Loading…');
 assert.equal(view.kpis.revenue,'৳450.50');
 assert.equal(view.kpis.avg,'৳225.25');
 assert.equal(view.transactions[0].price,'Not recorded');

@@ -3,6 +3,7 @@
 if (PHP_SAPI !== 'cli') { http_response_code(403); exit('CLI only'); }
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/../includes/sales.php';
+require_once __DIR__ . '/../includes/activity.php';
 function priceConnection(string $name = ''): PDO {
     $c = getAppConfig()['db'];
     return new PDO('mysql:host='.$c['host'].';port='.$c['port'].';charset=utf8mb4'.($name ? ';dbname='.$name : ''),
@@ -75,6 +76,9 @@ try {
     priceCheck($summary['revenue']===123.45 && $summary['priced_sales_count']===2 && $summary['unpriced_sales_count']===1,'totals distinguish zero-price sales from missing historical amounts');
     priceCheck($summary['average_order_value']===61.725,'average excludes unknown historical prices and includes zero');
     $report=priceWorker($name,['endpoint'=>'api/admin/sales-report.php','query'=>['per_page'=>1]]);
+    recordUserActivity($db,2);recordUserActivity($db,2);recordUserActivity($db,3);
+    $tracked=priceWorker($name,['endpoint'=>'api/admin/sales-report.php','query'=>['per_page'=>1]]);
+    priceCheck($tracked['data']['summary']['active_users']===2,'report counts unique tracked accounts independently of sales pagination');
     priceCheck(count($report['data']['transactions'])===1 && $report['data']['summary']['revenue']===123.45,'report totals are independent of row pagination');
     $empty=priceWorker($name,['endpoint'=>'api/admin/sales-report.php','query'=>['from'=>'2000-01-01','to'=>'2000-01-02']]);
     priceCheck($empty['data']['revenue']===0 && $empty['data']['summary']['completed_sales_count']===0,'date filter excludes other sales and returns zero revenue');

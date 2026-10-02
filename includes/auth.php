@@ -9,6 +9,7 @@
 
 require_once __DIR__ . '/../config/db.php';
 require_once __DIR__ . '/response.php';
+require_once __DIR__ . '/activity.php';
 
 if (!function_exists('initSession')) {
 
@@ -118,6 +119,7 @@ if (!function_exists('initSession')) {
             'phone'      => $user['phone'] ?? null,
             'avatar_url' => $user['avatar_url'] ?? null,
         ];
+        trackAuthenticatedUser((int)$user['id']);
     }
 
     /**
@@ -155,7 +157,9 @@ if (!function_exists('initSession')) {
         if (!isLoggedIn()) {
             sendErrorResponse('Authentication required. Please sign in.', 401);
         }
-        return getCurrentUser();
+        $user = getCurrentUser();
+        trackAuthenticatedUser((int)$user['id']);
+        return $user;
     }
 
     /**
