@@ -31,7 +31,7 @@ try {
     $stmtSeller->execute([$sellerId]);
     $seller = $stmtSeller->fetch();
 
-    if (!$seller) {
+    if (!$seller || $seller['role'] !== 'seller') {
         sendErrorResponse('Seller not found.', 404);
     }
 
@@ -70,7 +70,7 @@ try {
         JOIN users u ON r.reviewer_id = u.id
         LEFT JOIN listings l ON r.listing_id = l.id
         WHERE r.seller_id = ?
-        ORDER BY r.created_at DESC
+        ORDER BY r.created_at DESC, r.id DESC
     ");
     $stmtList->execute([$sellerId]);
     $reviews = $stmtList->fetchAll();

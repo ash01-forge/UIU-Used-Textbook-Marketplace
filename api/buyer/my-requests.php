@@ -22,7 +22,16 @@ $buyerId = (int) $buyer['id'];
 
 $db = getDbConnection();
 
-$statusFilter = isset($_GET['status']) ? strtolower(trim((string) $_GET['status'])) : null;
+$statusFilter = null;
+if (isset($_GET['status'])) {
+    if (!is_string($_GET['status'])) {
+        sendErrorResponse('Invalid request status.', 422, ['status' => 'Status must be a string.']);
+    }
+    $statusFilter = strtolower(trim($_GET['status']));
+    if (!in_array($statusFilter, ['', 'active', 'pending', 'accepted', 'declined', 'completed', 'cancelled'], true)) {
+        sendErrorResponse('Invalid request status.', 422, ['status' => 'Choose a supported request status.']);
+    }
+}
 
 try {
     $sql = "
