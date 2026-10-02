@@ -40,7 +40,9 @@ if ($requestId <= 0) {
 }
 
 // 2. Validate rating (1 to 5)
-$rating = isset($body['rating']) ? (int) $body['rating'] : 0;
+$rawRating = $body['rating'] ?? null;
+$rating = is_int($rawRating) || (is_string($rawRating) && preg_match('/^[1-5]$/D', $rawRating))
+    ? (int) $rawRating : 0;
 if ($rating < 1 || $rating > 5) {
     $errors['rating'] = 'Rating must be an integer between 1 and 5 stars.';
 }

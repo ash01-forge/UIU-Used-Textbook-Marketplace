@@ -41,22 +41,16 @@ try {
     $stmtCompleted->execute([$buyerId]);
     $completedPurchasesCount = (int) $stmtCompleted->fetchColumn();
 
-    // 4. Calculate total spent and estimated money saved on completed purchases
-    // Used books save ~40% compared to brand new retail books
-    $stmtSpent = $db->prepare("
-        SELECT COALESCE(SUM(l.price), 0) AS total_spent
-        FROM purchase_requests pr
-        JOIN listings l ON pr.listing_id = l.id
-        WHERE pr.buyer_id = ? AND pr.status = 'completed'
-    ");
-    $stmtSpent->execute([$buyerId]);
-    $totalSpent = (float) $stmtSpent->fetchColumn();
-    $estimatedSavings = round($totalSpent * 0.40, 2);
+    // Historical amounts cannot be inferred from mutable listing prices.
+    // Neither sale-time prices nor retail comparison prices are recorded.
+    $totalSpent = null;
+    $estimatedSavings = null;
 
     // 5. Recommended available listings (up to 4 items)
     $stmtRec = $db->prepare("
         SELECT 
             l.id,
+            l.seller_id,
             l.title,
             l.author,
             l.edition,
@@ -106,6 +100,7 @@ try {
             'completed_purchases' => $completedPurchasesCount,
             'total_spent'         => $totalSpent,
             'money_saved'         => $estimatedSavings,
+            'amounts_note'        => 'Unavailable: transaction-time and retail comparison prices are not recorded.',
         ],
         'recommended_listings' => $recommended,
         'recent_requests'      => $recentRequests,

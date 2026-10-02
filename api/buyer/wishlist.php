@@ -17,6 +17,9 @@ require_once __DIR__ . '/../../includes/auth.php';
 require_once __DIR__ . '/../../includes/csrf.php';
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
+if (!in_array($method, ['GET', 'POST'], true)) {
+    sendErrorResponse('Method not allowed. Use GET or POST.', 405);
+}
 $buyer = requireRole('buyer');
 $buyerId = (int) $buyer['id'];
 
@@ -73,23 +76,28 @@ if ($method === 'POST') {
     $body = getJsonRequestBody();
     $listingId = isset($body['listing_id']) ? (int) $body['listing_id'] : 0;
     $action = isset($body['action']) ? strtolower(trim((string) $body['action'])) : 'toggle';
+    if (!in_array($action, ['add', 'remove', 'toggle'], true)) {
+        sendErrorResponse('Invalid wishlist action.', 422, ['action' => 'Use add, remove, or toggle.']);
+    }
 
     if ($listingId <= 0) {
         sendErrorResponse('A valid listing ID is required.', 422, ['listing_id' => 'Valid listing_id is required.']);
     }
 
     try {
+        $db->beginTransaction();
         // Verify listing exists
-        $stmtListing = $db->prepare('SELECT id, title, status FROM listings WHERE id = ?');
+        $stmtListing = $db->prepare('SELECT id, title, status FROM listings WHERE id = ? FOR UPDATE');
         $stmtListing->execute([$listingId]);
         $listing = $stmtListing->fetch();
 
         if (!$listing) {
+            $db->rollBack();
             sendErrorResponse('The requested listing does not exist.', 404);
         }
 
         // Check current wishlist status
-        $stmtCheck = $db->prepare('SELECT id FROM wishlists WHERE user_id = ? AND listing_id = ?');
+        $stmtCheck = $db->prepare('SELECT id FROM wishlists WHERE user_id = ? AND listing_id = ? FOR UPDATE');
         $stmtCheck->execute([$buyerId, $listingId]);
         $existing = $stmtCheck->fetch();
 
@@ -128,6 +136,7 @@ if ($method === 'POST') {
         $stmtCount = $db->prepare('SELECT COUNT(*) FROM wishlists WHERE user_id = ?');
         $stmtCount->execute([$buyerId]);
         $wishlistCount = (int) $stmtCount->fetchColumn();
+        $db->commit();
 
         sendSuccessResponse($msg, [
             'listing_id'     => $listingId,
@@ -135,7 +144,8 @@ if ($method === 'POST') {
             'wishlist_count' => $wishlistCount,
         ]);
 
-    } catch (PDOException $e) {
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
         error_log('Wishlist modify error: ' . $e->getMessage());
         sendErrorResponse('Failed to update wishlist.', 500);
     }
