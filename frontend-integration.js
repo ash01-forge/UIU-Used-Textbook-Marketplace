@@ -40,6 +40,36 @@
       book: row.title, buyer: row.buyer_name || 'Unavailable', seller: window.BookBridgeAuth.currentUser?.full_name || '',
       price: row.sale_price == null ? 'Not recorded' : money(row.sale_price), date: row.completed_at || row.sold_at, courseCode: row.course_code}));
   }
+  function sellerSalesSummary(rows) {
+    const recorded=rows.filter(row=>row.purchase_request_id != null && row.sale_price != null && Number.isFinite(Number(row.sale_price)));
+    const cents=recorded.reduce((sum,row)=>sum+Math.round(Number(row.sale_price)*100),0);
+    const missing=rows.length-recorded.length;
+    return {total:rows.length,revenue:money(cents/100),average:recorded.length?money(cents/100/recorded.length):'Not recorded',
+      note:missing?`${missing} sale(s) have no recorded amount and are excluded from revenue and average price.`:'Amounts use the listing price recorded when each meetup was completed.'};
+  }
+  function SalesHistory({React,sellerSales,loadError,navigate,onRetry}) {
+    const h=React.createElement;
+    const summary=sellerSales==null?null:sellerSalesSummary(sellerSales);
+    const card=(label,value,color)=>h('div',{key:label,className:'stat-card',style:{textAlign:'center'}},
+      h('div',{style:{fontSize:24,fontWeight:800,color}},value),h('div',{style:{color:'#64748b',marginTop:8}},label));
+    return h('section',{style:{maxWidth:1100,margin:'0 auto',padding:'32px 24px'}},
+      h('button',{className:'btn-secondary',onClick:()=>navigate('seller-dashboard')},'← Back to dashboard'),
+      h('h1',null,'Sales History'),
+      loadError?h('div',{className:'bb-notice bb-error',role:'alert'},'Could not load sales history. '+loadError,
+        h('button',{className:'btn-secondary',onClick:onRetry},'Retry')):
+      summary?h(React.Fragment,null,
+        h('p',{style:{color:'#64748b'}},`Recorded total earned: ${summary.revenue}. ${summary.note}`),
+        h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit, minmax(160px, 1fr))',gap:16,margin:'32px 0'}},
+          card('Total Sales',summary.total,'#0A1931'),card('Recorded Revenue',summary.revenue,'#16A34A'),card('Avg. Recorded Price',summary.average,'#F59E0B')),
+        h('div',{className:'stat-card',style:{overflowX:'auto'}},h('h2',null,'Transaction History'),
+          sellerSales.length?h('table',{style:{width:'100%',borderCollapse:'collapse'}},
+            h('thead',null,h('tr',null,...['Book','Buyer','Course','Price','Date'].map(label=>h('th',{key:label,style:{textAlign:'left',padding:12,color:'#64748b'}},label)))),
+            h('tbody',null,...sellerSales.map(row=>h('tr',{key:row.id},...[
+              row.book,row.buyer,row.courseCode||'—',row.price,date(row.date)
+            ].map((value,i)=>h('td',{key:i,style:{padding:12,borderTop:'1px solid #e2e8f0'}},value)))))):
+          h('p',null,'No sales yet.'))):
+      h('p',{className:'bb-loading',role:'status'},'Loading sales history…'));
+  }
   async function perform(key, action) {
     if (pending.has(key)) return null;
     pending.add(key);
@@ -261,7 +291,7 @@
         h('div',{className:'bb-actions'},h('button',{type:'button',className:'btn-secondary',disabled:busy,onClick:()=>navigate('manage-listings')},'Cancel'),
           h('button',{type:'submit',className:'btn-primary',disabled:busy},busy?'Saving…':'Save Changes'))));
   }
-  window.BookBridgeUI = {listing, sales, perform, useData, upload, notify, date, imageUrl, usePreview, Requests, Profile, EditListing, useChat, useMarketplaceFilters, marketplaceFilters, marketplacePagination, useMarketplace, useReport, reportView, extraLinks,
+  window.BookBridgeUI = {listing, sales, sellerSalesSummary, SalesHistory, perform, useData, upload, notify, date, imageUrl, usePreview, Requests, Profile, EditListing, useChat, useMarketplaceFilters, marketplaceFilters, marketplacePagination, useMarketplace, useReport, reportView, extraLinks,
     render(React, C) {
       const h = React.createElement;
       const [user, setUser] = React.useState(null);
@@ -278,7 +308,8 @@
       const [ownRows, setOwnRows] = React.useState([]);
       const [pendingRows, setPendingRows] = React.useState([]);
       const [wishlistRows, setWishlistRows] = React.useState([]);
-      const [salesRows, setSalesRows] = React.useState([]);
+      const [salesRows, setSalesRows] = React.useState(null);
+      const [salesError, setSalesError] = React.useState(null);
       const [categories, setCategories] = React.useState([]);
       const [menu, setMenu] = React.useState(false);
       const [notice, setNotice] = React.useState(null);
@@ -296,7 +327,7 @@
       }
       React.useEffect(() => {
         const session = event => {const value = event.detail.user || null; if(initialized.current){saveError(null);setNotice(null);}setUser(value); setSelected(null);
-          setOwnRows([]); setPendingRows([]); setWishlistRows([]); setSalesRows([]); setCategories([]);
+          setOwnRows([]); setPendingRows([]); setWishlistRows([]); setSalesRows(null); setSalesError(null); setCategories([]);
           const next=value ? `${value.role}-dashboard` : 'welcome';setView(next);if(initialized.current)history.replaceState(null,'','#'+next);detailRequest.current++;refresh();};
         const message = event => setNotice(event.detail);
         const identity = event => setUser(event.detail.user);
@@ -315,8 +346,9 @@
         const tasks = [API().allListings().then(rows => {if(active){setPublicRows(rows.map(row=>listing(row)));setPublicLoaded(true);}}).catch(error=>{if(active){setPublicRows([]);setPublicFailed(true);}throw error;}),API().categories().then(result=>{if(active)setTaxonomy(result.data);})];
         if(role === 'buyer') tasks.push(API().wishlist().then(result=>{if(active)setWishlistRows(result.data.items.map(row=>listing(row)));}));
         if(role === 'seller') {
+          setSalesRows(null);setSalesError(null);
           tasks.push(API().sellerListings().then(rows=>{if(active)setOwnRows(rows.map(row=>listing(row)));}));
-          tasks.push(API().sellerSales().then(rows=>{if(active)setSalesRows(sales(rows));}));
+          tasks.push(API().sellerSales().then(rows=>{if(active)setSalesRows(sales(rows));}).catch(error=>{if(active)setSalesError(error.message||'Request failed.');throw error;}));
         }
         if(role === 'admin') {
           tasks.push(API().adminPendingListings().then(rows=>{if(active)setPendingRows(rows.map(row=>listing(row,'pending_approval')));}));
@@ -377,11 +409,11 @@
         case 'wishlist':page=h(C.Wishlist,{...props,wishlist,onWishlistToggle:toggle,onSelectListing:row=>select(row),allListings:wishlistRows});break;
         case 'purchase-form':case 'payment':case 'purchase-success':case 'rating':page=selected?h(C.Purchase,{...props,listing:selected,currentView:view}):h('p',{className:'bb-loading'},'Select a listing or purchase request first.');break;
         case 'chat':page=h(C.Chat,{...props,role,chatPartner:selected?.seller||'',partnerId:selected?.sellerId,listingId:selected?.id,listingTitle:selected?.title});break;
-        case 'seller-dashboard':page=h(C.Seller,{...props,sellerListings:ownRows,sellerSales:salesRows});break;
+        case 'seller-dashboard':page=h(C.Seller,{...props,sellerListings:ownRows,sellerSales:salesRows||[]});break;
         case 'add-listing':page=h(C.AddListing,{...props,onAddListing:()=>refresh()});break;
         case 'listing-submitted':page=h(C.Submitted,props);break;
         case 'manage-listings':page=h(C.Manage,{...props,sellerListings:ownRows,onMarkSold:mark,onEditListing:row=>select(row,'edit-listing'),onDeleteListing:remove});break;
-        case 'sales-history':page=h(C.Sales,{...props,sellerSales:salesRows});break;
+        case 'sales-history':page=h(SalesHistory,{React,...props,sellerSales:salesRows,loadError:salesError,onRetry:refresh});break;
         case 'edit-listing':page=selected?h(EditListing,{React,...props,key:selected.id,listing:selected,onSaveListing:()=>refresh()}):h('p',{className:'bb-loading'},'Select one of your listings first.');break;
         case 'admin-dashboard':page=h(C.Admin,{...props,allListings:pendingRows});break;
         case 'pending-listings':page=h(C.Pending,{...props,allListings:pendingRows,onSelectListing:row=>select(row,'review-listing')});break;
