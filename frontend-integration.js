@@ -155,6 +155,7 @@
       const [selected, setSelected] = React.useState(null);
       const [publicRows, setPublicRows] = React.useState([]);
       const [publicLoaded,setPublicLoaded] = React.useState(false);
+      const [publicFailed,setPublicFailed] = React.useState(false);
       const [taxonomy,setTaxonomy] = React.useState(null);
       const initialized=React.useRef(false);
       const detailRequest=React.useRef(0);
@@ -194,7 +195,8 @@
         return () => {document.removeEventListener('bookbridge:session',session); document.removeEventListener('bookbridge:notice',message);document.removeEventListener('bookbridge:identity',identity);};
       }, []);
       React.useEffect(() => {if(!ready) return; let active = true; setLoading(true);
-        const tasks = [API().allListings().then(rows => {if(active){setPublicRows(rows.map(row=>listing(row)));setPublicLoaded(true);}}),API().categories().then(result=>{if(active)setTaxonomy(result.data);})];
+        setPublicLoaded(false);setPublicFailed(false);
+        const tasks = [API().allListings().then(rows => {if(active){setPublicRows(rows.map(row=>listing(row)));setPublicLoaded(true);}}).catch(error=>{if(active){setPublicRows([]);setPublicFailed(true);}throw error;}),API().categories().then(result=>{if(active)setTaxonomy(result.data);})];
         if(role === 'buyer') tasks.push(API().wishlist().then(result=>{if(active)setWishlistRows(result.data.items.map(row=>listing(row)));}));
         if(role === 'seller') {
           tasks.push(API().sellerListings().then(rows=>{if(active)setOwnRows(rows.map(row=>listing(row)));}));
@@ -251,7 +253,7 @@
       let page;
       if(!ready || blocked)page=h('p',{className:'bb-loading'},'Checking your session…');
       else switch(view) {
-        case 'welcome':page=h(C.Welcome,{navigate,setRole:setLoginRole,activeListings:publicLoaded?publicRows.length:'Unavailable'});break;
+        case 'welcome':page=h(C.Welcome,{navigate,setRole:setLoginRole,activeListings:publicLoaded?publicRows.length:publicFailed?'Temporarily unavailable':'Loading…'});break;
         case 'login':page=h(C.Login,{role:loginRole,navigate,setRole:setLoginRole});break;
         case 'marketplace':case 'browse':page=h(C.Marketplace,{...props,role:role||'guest',onSelectListing:row=>select(row),wishlist,onWishlistToggle:toggle,onLoginPrompt:()=>navigate('login'),allListings:publicRows});break;
         case 'listing-detail':page=selected?h(C.Detail,{...props,listing:selected,role:role||'guest',isWishlisted:wishlist.includes(selected.id),onWishlistToggle:()=>role==='buyer'?toggle(selected.id):navigate('login'),onLoginPrompt:()=>navigate('login'),onStartChat:()=>{}}):h('p',{className:'bb-loading'},'Loading listing…');break;
@@ -274,7 +276,7 @@
         case 'sales-report':page=h(C.Report,props);break;
         case 'purchase-requests':page=h(window.BookBridgeUI.Requests,{React,...props,role,onRefresh:refresh,onReview:row=>{setSelected({...listing({...row,id:row.listing_id}),requestId:row.id});setView('rating');history.replaceState(null,'','#rating/'+row.id);},onChat:row=>{setSelected({...listing({...row,id:row.listing_id}),sellerId:role==='seller'?row.buyer_id:row.seller_id,seller:role==='seller'?row.buyer_name:row.seller_name});navigate('chat');}});break;
         case 'profile':page=['buyer','seller'].includes(role)?h(window.BookBridgeUI.Profile,{React,...props,role,onSaved:async()=>{const result=await API().me();window.BookBridgeAuth.setUser(result.data.user);}}):h('p',{className:'bb-notice'},'Profile editing is available for buyers and sellers.');break;
-        default:page=h(C.Welcome,{navigate,setRole:setLoginRole,activeListings:publicLoaded?publicRows.length:'Unavailable'});
+        default:page=h(C.Welcome,{navigate,setRole:setLoginRole,activeListings:publicLoaded?publicRows.length:publicFailed?'Temporarily unavailable':'Loading…'});
       }
       return h('div',{style:{minHeight:'100vh',background:'#F6FAFD'}},
         !['welcome','login'].includes(view)&&h(C.Nav,{role,navigate,onLogout:()=>window.BookBridgeAuth.logout(),showProfileMenu:menu,setShowProfileMenu:setMenu}),

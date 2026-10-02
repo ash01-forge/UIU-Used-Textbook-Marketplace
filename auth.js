@@ -8,6 +8,7 @@
   let csrfToken = null;
   let currentUser = null;
   let authRequestPending = false;
+  let logoutNoticeTimer = null;
 
   function pageUrl(file, query = "") {
     return new URL(`${file}${query}`, projectBase).href;
@@ -126,12 +127,32 @@
   }
 
   function clearAuthNotice() {
+    clearTimeout(logoutNoticeTimer);
+    logoutNoticeTimer = null;
     document.getElementById("bookbridge-auth-notice")?.remove();
     const url = new URL(window.location.href);
     if (url.searchParams.has("auth")) {
       url.searchParams.delete("auth");
       history.replaceState(null, "", url.pathname + url.search + url.hash);
     }
+  }
+
+  function showLogoutNotice() {
+    // Consume the logout query once so a refresh does not repeat the notice.
+    clearAuthNotice();
+    const notice = document.createElement("div");
+    notice.id = "bookbridge-auth-notice";
+    notice.setAttribute("role", "status");
+    notice.style.cssText = "position:fixed;top:16px;right:16px;z-index:1000;box-sizing:border-box;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:16px;padding:12px 16px;border:1px solid #b3cfe5;border-radius:12px;background:#fff;color:#12304a;box-shadow:0 4px 20px #0a19311a;font:14px/1.5 sans-serif";
+    const dismiss = document.createElement("button");
+    dismiss.type = "button";
+    dismiss.textContent = "×";
+    dismiss.setAttribute("aria-label", "Dismiss sign-out notification");
+    dismiss.style.cssText = "border:0;background:transparent;color:inherit;font-size:22px;line-height:1;padding:4px;cursor:pointer";
+    dismiss.addEventListener("click", clearAuthNotice);
+    notice.append(document.createTextNode("You have been signed out."), dismiss);
+    document.body.append(notice);
+    logoutNoticeTimer = setTimeout(clearAuthNotice, 5000);
   }
 
   function routeUser(user) {
@@ -436,7 +457,7 @@
     if (isHome && !currentUser && query.get("auth") === "expired") {
       showGlobalMessage("Your session has expired. Sign in again to continue.", true);
     } else if (isHome && !currentUser && query.get("auth") === "logged-out") {
-      showGlobalMessage("You have been signed out.");
+      showLogoutNotice();
     }
   }
 
