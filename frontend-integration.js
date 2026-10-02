@@ -121,25 +121,65 @@
     }catch(error){notify(error.message,true);}finally{lock.current=false;setBusy(false);}}
     return {messages,text,setText,search,setSearch,send,busy,loading,partner,name,title,choose,conversations:conversations.filter(row=>row.partner_name.toLowerCase().includes(search.toLowerCase())).map(row=>({...row,name:row.partner_name,last:row.last_message,time:date(row.last_message_time),unread:row.unread_count,active:row.partner_id===partner}))};
   }
+  function useMarketplaceFilters(React, department) {
+    const [values,setValues]=React.useState({department,subject:'',category_id:'',min_price:'',max_price:''});
+    // Reset dependent selections in the same render that changes department.
+    const current=values.department===department?values:{...values,department,subject:'',category_id:''};
+    if(current!==values)setValues(current);
+    return {...current,set:(key,value)=>setValues({...current,[key]:value}),clear:()=>setValues({department,subject:'',category_id:'',min_price:'',max_price:''})};
+  }
+  function marketplaceFilters(React,filters,taxonomy) {
+    const h=React.createElement, style={padding:'6px 12px',borderRadius:8,border:'1.5px solid #e2eaf2',background:'#fff',fontSize:12,fontFamily:'Inter, sans-serif',color:'#374151',maxWidth:'100%'};
+    const subjects=(taxonomy?.subjects||[]).filter(row=>filters.department==='All'||row.departments.includes(filters.department));
+    const ids=new Set(subjects.map(row=>row.id));
+    const categories=(taxonomy?.categories||[]).filter(row=>filters.department==='All'||(row.type==='Department'?row.name===filters.department:ids.has(row.id)));
+    const select=(key,label,rows)=>h('label',{key,style:{display:'flex',alignItems:'center',gap:6,fontSize:12}},label,h('select',{'aria-label':label,value:filters[key],onChange:event=>filters.set(key,event.target.value),style},h('option',{value:''},'All'),...rows.map(row=>h('option',{key:row.id,value:key==='subject'?row.name:row.id},row.name))));
+    return h('div',{style:{display:'flex',flexWrap:'wrap',gap:12,width:'100%'}},select('subject','Subject',subjects),select('category_id','Category',categories),...['min_price','max_price'].map((key,index)=>h('label',{key,style:{display:'flex',alignItems:'center',gap:6,fontSize:12}},index?'Max price (৳)':'Min price (৳)',h('input',{type:'number',min:0,max:99999999.99,step:'0.01','aria-label':index?'Max price':'Min price',value:filters[key],onChange:event=>filters.set(key,event.target.value),style:{...style,width:110}}))));
+  }
+  function marketplacePagination(React,server) {
+    const h=React.createElement;
+    if(server.loading||server.error||!server.total)return null;
+    return h('nav',{'aria-label':'Marketplace pages',style:{display:'flex',justifyContent:'center',alignItems:'center',gap:16,marginTop:24}},
+      h('button',{type:'button',className:'btn-secondary',disabled:server.page<=1,onClick:()=>server.setPage(server.page-1)},'Previous'),
+      h('span',{'aria-live':'polite'},'Page '+server.page+' of '+server.totalPages),
+      h('button',{type:'button',className:'btn-secondary',disabled:server.page>=server.totalPages,onClick:()=>server.setPage(server.page+1)},'Next'));
+  }
   function useMarketplace(React,filters) {
-    const [state,setState]=React.useState({rows:[],loading:true,error:null});
-    const {search,department,type,condition,sort}=filters;
+    const [state,setState]=React.useState({rows:[],loading:true,error:null,total:0,totalPages:0});
+    const {search,department,type,condition,sort,subject='',category_id='',min_price='',max_price=''}=filters;
+    const key=JSON.stringify([search,department,type,condition,sort,subject,category_id,min_price,max_price,filters.revision]);
+    const [position,setPosition]=React.useState({key,page:1});
+    const page=position.key===key?position.page:1, perPage=12;
+    if(position.key!==key)setPosition({key,page:1});
     React.useEffect(()=>{
-      let active=true;setState({rows:[],loading:true,error:null});
+      let active=true;setState({rows:[],loading:true,error:null,total:0,totalPages:0});
       const timer=setTimeout(async()=>{
         const params=new URLSearchParams();
         if(search.trim())params.set('search',search.trim());
-        for(const [key,value] of Object.entries({department,type,condition}))if(value!=='All')params.set(key,value);
+        for(const [name,value] of Object.entries({department,type,condition,subject,category_id,min_price,max_price}))if(value!==''&&value!=='All')params.set(name,value);
         params.set('sort',sort==='price-asc'||sort==='price-desc'?'price':'created_at');
         params.set('direction',sort==='price-asc'?'asc':'desc');
         try {
-          const rows=await API().allListings('?'+params.toString());
-          if(active)setState({rows:rows.map(row=>listing(row)).filter(row=>row.status==='available'),loading:false,error:null});
-        }catch(error){if(active){setState({rows:[],loading:false,error:error.message});notify(error.message,true);}}
+          let rows,total,totalPages;
+          if(sort==='rating') {
+            // Preserve the existing global rating order before slicing a page.
+            rows=(await API().allListings('?'+params)).map(row=>listing(row)).sort((a,b)=>(b.sellerRating??0)-(a.sellerRating??0));
+            total=rows.length;totalPages=Math.ceil(total/perPage);rows=rows.slice((page-1)*perPage,page*perPage);
+          } else {
+            params.set('page',page);params.set('per_page',perPage);
+            const result=await API().listings('?'+params);
+            rows=result.data.listings.map(row=>listing(row));total=result.data.pagination.total;totalPages=result.data.pagination.total_pages;
+          }
+          if(active) {
+            if(page>Math.max(1,totalPages)){setPosition({key,page:Math.max(1,totalPages)});return;}
+            setState({key,page,rows,total,totalPages,loading:false,error:null});
+          }
+        }catch(error){if(active)setState({key,page,rows:[],total:0,totalPages:0,loading:false,error:error.message});}
       },search?250:0);
       return()=>{active=false;clearTimeout(timer);};
-    },[search,department,type,condition,sort,filters.revision]);
-    return state;
+    },[key,page]);
+    const visible=state.key===key&&state.page===page?state:{rows:[],total:0,totalPages:0,loading:true,error:null};
+    return {...visible,page,setPage:next=>setPosition({key,page:next})};
   }
   function useReport(React,period) {
     const [report,setReport]=React.useState(null);
@@ -151,7 +191,7 @@
     return {chartTitle:'Completed sales',data:Object.entries(grouped).sort().map(([label,sales])=>({label,sales})),kpis:{sales:report?.summary?.completed_sales_count??'Unavailable',revenue:'Unavailable',avg:'Unavailable',users:'Unavailable'},changes:{sales:'',revenue:'',avg:'',users:''},comparison:'',note:report?.revenue_note||'Unavailable: completed transactions have no stored sale price.',transactions:(report?.transactions||[]).map(row=>({id:row.purchase_request_id,book:row.listing_title,buyer:row.buyer_name,seller:row.seller_name,courseCode:row.course_code||'Unavailable',price:'Unavailable',date:row.completed_at}))};
   }
   function extraLinks(React,role,navigate) {return ['buyer','seller'].includes(role)?React.createElement(React.Fragment,null,...[['purchase-requests','Purchase Requests'],['chat','Messages'],['profile','My Profile']].map(([view,label])=>React.createElement('button',{key:view,type:'button',className:'bb-menu-link',onClick:()=>navigate(view)},label))):null;}
-  window.BookBridgeUI = {listing, sales, perform, useData, upload, notify, date, imageUrl, usePreview, Requests, Profile, useChat, useMarketplace, useReport, extraLinks,
+  window.BookBridgeUI = {listing, sales, perform, useData, upload, notify, date, imageUrl, usePreview, Requests, Profile, useChat, useMarketplaceFilters, marketplaceFilters, marketplacePagination, useMarketplace, useReport, extraLinks,
     render(React, C) {
       const h = React.createElement;
       const [user, setUser] = React.useState(null);
