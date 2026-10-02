@@ -23,4 +23,28 @@ const sales=UI.sales([{listing_id:1,price:999,sale_price:450.5},{listing_id:2,pr
 assert.equal(sales[0].price,'৳450.50','history uses snapshot instead of edited listing price');
 assert.equal(sales[1].price,'Not recorded');
 assert.equal(UI.reportView(React,null).kpis.revenue,'Loading…');
+const history=UI.sales([
+  {listing_id:1,purchase_request_id:1,price:999,sale_price:450.5},
+  {listing_id:2,purchase_request_id:2,price:999,sale_price:0},
+  {listing_id:3,purchase_request_id:3,price:999,sale_price:null},
+  {listing_id:4,purchase_request_id:null,price:999,sale_price:null}
+]);
+const summary=UI.sellerSalesSummary(history);
+assert.equal(summary.total,4);
+assert.equal(summary.revenue,'৳450.50');
+assert.equal(summary.average,'৳225.25','zero is included, unknown and manual sales are excluded');
+assert.ok(summary.note.includes('2 sale(s)'));
+assert.equal(UI.sellerSalesSummary([history[2]]).revenue,'৳0.00');
+assert.equal(UI.sellerSalesSummary([history[2]]).average,'Not recorded');
+assert.equal(UI.sellerSalesSummary([]).total,0);
+let rendered=JSON.stringify(UI.SalesHistory({React,sellerSales:history,navigate:()=>{}}));
+assert.ok(rendered.includes('Recorded Revenue') && rendered.includes('৳450.50') && rendered.includes('৳225.25'));
+assert.ok(!rendered.includes('completed sales have no stored transaction price'));
+rendered=JSON.stringify(UI.SalesHistory({React,sellerSales:null,navigate:()=>{}}));
+assert.ok(rendered.includes('Loading sales history'));
+assert.ok(!rendered.includes('৳0.00'),'loading must not appear as zero revenue');
+rendered=JSON.stringify(UI.SalesHistory({React,sellerSales:history,loadError:'Network failure',navigate:()=>{},onRetry:()=>{}}));
+assert.ok(rendered.includes('Retry') && rendered.includes('Network failure'));
+assert.ok(!rendered.includes('৳450.50'),'failed refresh hides stale totals');
+assert.match(readFileSync(require.resolve('../frontend-integration.js'),'utf8'),/case 'sales-history':page=h\(SalesHistory,/,'route uses API-connected history component');
 console.log('PASS recorded money, zero, historical unknown, daily revenue, coverage note, immutable seller history and loading state');

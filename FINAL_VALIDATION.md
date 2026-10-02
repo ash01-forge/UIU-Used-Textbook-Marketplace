@@ -63,3 +63,9 @@ On 3 October 2026, all eleven suites were rerun on merged main `6e0504f`: authen
 Faculty-required admin, seller, buyer and guest workflows are covered by the existing integration tests and browser checks described above. Purchase requests satisfy the request-to-buy requirement; donation is optional. This is local validation, not a guarantee against every possible browser or deployment issue.
 
 Presentation checklist: start Apache/MySQL; use the localhost URL; demonstrate seller submission → admin approval → buyer request → seller acceptance/completion → buyer review and admin report. Keep a database and uploads backup outside Git. Accounts created on a teammate's laptop are not automatically transferred by Git. Personal viva preparation, report and slides remain the presenters' responsibility.
+
+## Seller Sales History summary correction
+
+The compiled Sales History layout still displayed hardcoded Unavailable totals. The `sales-history` route now uses an editable API-connected component in `frontend-integration.js`; `app.js` is unchanged by this repair. Revenue and average use recorded amounts across all pages loaded by the existing seller API adapter. Zero-price sales are included, unknown historical/manual amounts are excluded with a note, and loading/errors have explicit states with Retry rather than misleading zero totals.
+
+After this repair, sale-price UI regressions, seller frontend integration, marketplace UI regressions and all 12 sale-price backend checks passed; frontend JavaScript syntax and changed-file whitespace checks passed. Browser verification with disposable seller data showed total sales 3, recorded revenue BDT 245.75, average BDT 122.88, zero amount BDT 0.00 and one unknown amount. No browser error/warning was captured. The test session was signed out and all fixture records removed. Existing seller credentials were not reset.
