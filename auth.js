@@ -118,17 +118,19 @@
   }
 
   function userDestination(user) {
-    if (user.role === "buyer") return "buyer-dashboard.html";
-    if (user.role === "seller") return "seller-dashboard.html";
-    if (user.role === "admin") return "admin-dashboard.html";
-    return null;
+    // Intended destination for all roles is the original integrated SPA on index.html
+    return "index.html";
   }
 
   function routeUser(user) {
     currentUser = user;
-    const destination = userDestination(user);
-    if (destination) {
-      window.location.assign(pageUrl(destination));
+    const file = window.location.pathname.split("/").pop();
+    const isHome = file === "" || file === "index.html";
+    if (isHome) {
+      window.__bookBridgeUser = user;
+      document.dispatchEvent(new CustomEvent("bookbridge:session", {
+        detail: { user, csrf: csrfToken }
+      }));
       return;
     }
     window.location.assign(pageUrl("index.html"));
@@ -366,15 +368,15 @@
           routeUser(currentUser);
           return;
         }
-        if (isHome && currentUser.role !== "admin") {
-          keepHidden = true;
-          routeUser(currentUser);
-          return;
-        }
-        if (isHome && currentUser.role === "admin") {
-          keepHidden = true;
-          window.location.replace(pageUrl("admin-dashboard.html"));
-          return;
+        if (isHome) {
+          // Authenticated user on index.html — let the React SPA handle routing.
+          // Dispatch an event so app.js can pick up the session without polling.
+          window.__bookBridgeUser = currentUser;
+          window.__bookBridgeCsrf = csrfToken;
+          document.dispatchEvent(new CustomEvent('bookbridge:session', {
+            detail: { user: currentUser, csrf: csrfToken }
+          }));
+          // Keep page visible — React will show the right dashboard.
         }
       }
     } catch (error) {
