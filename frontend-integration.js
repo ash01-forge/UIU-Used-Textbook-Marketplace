@@ -67,15 +67,21 @@
     return preview||url;
   }
   function Requests({React,role,navigate,onRefresh,onReview,onChat}) {
-    const h=React.createElement, [rows,setRows]=React.useState(null), [busy,setBusy]=React.useState(false), lock=React.useRef(false);
-    const load=()=> (role==='seller'?API().sellerRequests():API().purchaseRequests()).then(result=>setRows(result.data.requests));
-    React.useEffect(()=>{let active=true;(role==='seller'?API().sellerRequests():API().purchaseRequests()).then(result=>{if(active)setRows(result.data.requests);}).catch(error=>notify(error.message,true));return()=>{active=false;};},[role]);
-    async function action(row,type) {if(lock.current)return;lock.current=true;setBusy(true);try {
+    const h=React.createElement, [rows,setRows]=React.useState(null), [busy,setBusy]=React.useState(false), [loadError,setLoadError]=React.useState(null), lock=React.useRef(false);
+    async function load() {
+      setRows(null);setLoadError(null);
+      try {const result=await (role==='seller'?API().sellerRequests():API().purchaseRequests());setRows(result.data.requests);}
+      catch(error){setLoadError(error.message||'Could not load purchase requests.');throw error;}
+    }
+    React.useEffect(()=>{let active=true;setRows(null);setLoadError(null);(role==='seller'?API().sellerRequests():API().purchaseRequests()).then(result=>{if(active)setRows(result.data.requests);}).catch(error=>{if(active){setLoadError(error.message||'Could not load purchase requests.');notify(error.message,true);}});return()=>{active=false;};},[role]);
+    async function retry() {if(lock.current)return;lock.current=true;setBusy(true);try{await load();}catch(error){notify(error.message,true);}finally{lock.current=false;setBusy(false);}}
+    async function action(row,type) {if(lock.current)return;lock.current=true;setBusy(true);let updated=false;try {
       await (role==='seller'?API().sellerRequestAction(row.id,type):API().cancelPurchaseRequest(row.id));
-      await load();onRefresh();notify('Purchase request updated.');
-    }catch(error){notify(error.message,true);}finally{lock.current=false;setBusy(false);}}
+      updated=true;setRows(null);onRefresh();await load();notify('Purchase request updated.');
+    }catch(error){notify(updated?`Purchase request updated, but the latest requests could not be loaded. Use Retry. ${error.message}`:error.message,true);}finally{lock.current=false;setBusy(false);}}
     const button=(label,click)=>h('button',{type:'button',className:'btn-secondary',disabled:busy,onClick:click},label);
     return h('section',{className:'bb-panel'},h('button',{className:'btn-secondary',onClick:()=>navigate(role+'-dashboard')},'Back to dashboard'),h('h1',null,'Purchase Requests'),
+      loadError?h('div',null,h('p',{role:'alert'},loadError),button('Retry',retry)):
       rows===null?h('p',{role:'status'},'Loading requests…'):rows.length===0?h('p',null,'No purchase requests yet.'):
       h('div',{className:'bb-requests'},rows.map(row=>h('article',{className:'card',key:row.id},h('h2',null,row.book_title),
         h('p',null,`${role==='seller'?row.buyer_name:row.seller_name} · ${row.status}`),
