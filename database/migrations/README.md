@@ -26,7 +26,9 @@ This folder contains numbered SQL migration scripts for the BookBridge marketpla
 | File                                    | Description                                                                                                                                                                                           | Status                                      |
 | :-------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------ |
 | `001_align_to_target_schema.sql`        | Aligns the Oct-2026 phpMyAdmin backup schema to the agreed team target schema. Renames columns, adds new columns, inserts parent Department categories, creates the `wishlists` table.                | ✅ Applied to `bookbridge_db` on 2026-10-01 |
-| `002_category_relationship_columns.sql` | Adds nullable category department/subject compatibility fields and the optional user department field; preserves populated values and only infers unambiguous subject parents from existing listings. | Added; not executed in this task            |
+| `002_category_relationship_columns.sql` | Adds nullable category department/subject compatibility fields and the optional user department field; preserves populated values and only infers unambiguous subject parents from existing listings. | Required on older schemas missing these fields            |
+| `003_nullable_listing_subject.sql` | Allows omitted listing subjects without altering existing values. | Required where `listings.subject` is NOT NULL |
+| `004_sale_price_snapshot.sql` | Adds nullable completed-sale price snapshots; leaves unknown historical prices NULL. | Required where `purchase_requests.sale_price` is missing |
 
 ---
 
@@ -36,7 +38,7 @@ This folder contains numbered SQL migration scripts for the BookBridge marketpla
 2. Select `bookbridge_db` in the left panel.
 3. Click the **Import** tab.
 4. For a legacy backup, apply `001_align_to_target_schema.sql` first if it has not already been applied. Then apply `002_category_relationship_columns.sql` for category CRUD support.
-5. For a current fresh `bookbridge.sql` install, neither migration is needed. Apply migration 002 only to older installations missing user department or category relationship fields.
+5. For a current fresh `bookbridge.sql` install, migrations 001–004 are already reflected in the schema and should not be reapplied as a legacy upgrade. On existing installations, apply 002, 003 and 004 only where the corresponding fields or compatibility changes are missing.
 
 ## Execution via Command Line (XAMPP MySQL)
 
@@ -46,3 +48,5 @@ mysql -u root bookbridge_db < "database/migrations/001_align_to_target_schema.sq
 # Older schema missing user department or category relationship fields only.
 mysql -u root bookbridge_db < "database/migrations/002_category_relationship_columns.sql"
 ```
+
+Migration `001_initial_schema.sql` is a fresh-schema alternative, not a second legacy upgrade to run after `001_align_to_target_schema.sql`. Always select the intended database and back up existing data before an upgrade.

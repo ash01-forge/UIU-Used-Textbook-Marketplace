@@ -144,7 +144,7 @@ Use this **only** if you already had a `bookbridge_db` created before the backen
 4. Click **Go**.
 
 > [!NOTE]
-> If you are unsure which path applies to you, check your `bookbridge_db` → `users` table. If it has a column named `full_name`, you already have the migrated/fresh schema. Use **Path A** for a clean reinstall if anything looks wrong.
+> If you are unsure which path applies to you, check your `bookbridge_db` → `users` table. If it has a column named `full_name`, you already have the migrated/fresh schema. Preserve the existing database. After a backup, apply only missing additive migrations 002–004; see the migrations guide. A fresh import is only for a new database, not a repair of existing records.
 
 ---
 
@@ -220,8 +220,8 @@ A listing can exist in one of five explicit states:
    - **Accepts:** `status: 'accepted'`. Buyer and seller proceed to meet.
    - **Declines:** `status: 'declined'`.
 3. **Transaction Completion:**
-   - Seller marks the listing as **Sold**.
-   - Updates: `listings.status = 'sold'`, `purchase_requests.status = 'completed'`, `purchase_requests.completed_at = NOW()`.
+   - Seller uses **Complete meetup** for an accepted request through `api/buyer/seller-request-action.php`.
+   - Updates: `listings.status = 'sold'`, `purchase_requests.status = 'completed'`, `purchase_requests.completed_at = NOW()`, and `purchase_requests.sale_price` captures the locked listing price in the same transaction. Manual mark-sold does not complete a purchase request or create recorded revenue.
 
 ### E. Message & Review Eligibility Rules
 
@@ -233,7 +233,7 @@ A listing can exist in one of five explicit states:
 - Admin endpoints require `requireRole('admin')`; every state-changing request must validate CSRF.
 - Listing moderation accepts only `pending_approval` listings. Reviewer ID comes from the session and `reviewed_at` is recorded with the decision. Reject and change requests require feedback.
 - Category updates preserve department-subject links and matching labels. Deletion is blocked while users, child subjects, or listings reference the category.
-- The current schema does not snapshot completed transaction prices, so reports must not calculate realized revenue from current listing prices.
+- Completed requests snapshot the listing price in `sale_price`. Reports sum these immutable snapshots; unknown older amounts remain NULL and are excluded with a coverage note. Never backfill historical revenue from current listing prices.
 - User listing, role changes, account deletion, and password-reset APIs are not defined in this milestone; do not invent them.
 
 ---
