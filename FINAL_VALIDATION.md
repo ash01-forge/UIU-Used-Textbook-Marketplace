@@ -36,7 +36,7 @@ Authentication check totals depend on the number of original accounts being pres
 
 ## Scope and data handling
 
-Browser checks are smoke tests, not an exhaustive device/browser matrix. Revenue remains unavailable because transaction-time prices are not stored; it is not fabricated from current listing prices.
+Browser checks are smoke tests, not an exhaustive device/browser matrix. The later sale-price reporting change below supersedes the original revenue limitation; unknown historical amounts remain explicitly unrecorded.
 
 Labib confirmed the supplied seller account was created on his own PC. It is not present in this localhost database. No existing account was recreated or had its password changed; disposable seller fixtures were used instead.
 
@@ -55,3 +55,11 @@ Validation rerun after this change:
 - Browser dashboard and sales report showed a disposable QA transaction of BDT 245.75, correct total/average, daily revenue and an unknown historical amount. The QA transaction, listing and buyer were removed. After the markup correction the browser produced no new console errors.
 
 The local database migration is applied and original request fields are preserved. Other installations must apply migration 004 before using the new APIs. Existing app.js formatting and user uploads were excluded from this commit.
+
+## Final audit of merged main
+
+On 3 October 2026, all eleven suites were rerun on merged main `6e0504f`: authentication, admin, seller, buyer/messages/reviews, sale-price backend, release readiness, isolated marketplace API, sale-price UI, seller integration, marketplace UI and guest marketplace. All exited successfully. All API/helper PHP files and root JavaScript files passed syntax checks. The local health endpoint reported database connected. The marketplace review database and checkout were removed after validation.
+
+Faculty-required admin, seller, buyer and guest workflows are covered by the existing integration tests and browser checks described above. Purchase requests satisfy the request-to-buy requirement; donation is optional. This is local validation, not a guarantee against every possible browser or deployment issue.
+
+Presentation checklist: start Apache/MySQL; use the localhost URL; demonstrate seller submission → admin approval → buyer request → seller acceptance/completion → buyer review and admin report. Keep a database and uploads backup outside Git. Accounts created on a teammate's laptop are not automatically transferred by Git. Personal viva preparation, report and slides remain the presenters' responsibility.

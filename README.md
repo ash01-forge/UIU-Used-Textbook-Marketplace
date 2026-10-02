@@ -127,7 +127,7 @@ UIU-Used-Textbook-Marketplace/
 ├── config/                   Application and database configuration
 ├── includes/                 Shared authentication, CSRF, and response helpers
 ├── database/                 Fresh-install schema and upgrade migrations
-├── tests/                    PHP CLI test suites
+├── tests/                    PHP API and JavaScript integration suites
 ├── uploads/                  Uploaded listing images
 ├── index.html                Main application entry point
 ├── app.js                    Compiled React interface
@@ -291,7 +291,6 @@ The fresh-install schema is stored in `database/bookbridge.sql`. Upgrade scripts
 ### Reports
 
 - Reports show completed-sales counts and transaction records.
-- Purchase requests do not store transaction-time sale prices.
 - Completed meetups store a listing-price snapshot for revenue, average order value and transaction amounts. Later listing edits do not change past revenue. Older transactions without a snapshot are labelled Not recorded and excluded from monetary totals.
 - Buyer savings are estimates.
 
@@ -324,11 +323,22 @@ Run tests from the project directory using PHP CLI. Read each suite's prerequisi
 ```powershell
 C:\xampp\php\php.exe tests\auth_test.php
 C:\xampp\php\php.exe tests\admin_test.php
-C:\xampp\php\php.exe tests\marketplace_test.php
 C:\xampp\php\php.exe tests\buyer_workflow_test.php
 C:\xampp\php\php.exe tests\seller_test.php
 C:\xampp\php\php.exe tests\release_readiness_test.php
+C:\xampp\php\php.exe tests\sale_price_test.php
 ```
+
+JavaScript regressions (Node.js required):
+
+```powershell
+node tests/seller_integration_test.js
+node tests/marketplace_ui_test.js
+node tests/guest_marketplace_test.js
+node tests/sale_price_ui_test.js
+```
+
+`marketplace_test.php` requires an isolated database whose name starts with `bookbridge_review_` and a separate Apache checkout at `http://localhost/UIU-Used-Textbook-Marketplace-main-review`. Configure that checkout to use the isolated database, import the fresh schema there, and run the suite from that checkout. Never point this suite at the demonstration database. Remove only the isolated database and checkout afterward.
 
 The release-readiness suite checks fresh-schema compatibility, seed password verification, UIU email validation, and concurrent review submissions.
 
