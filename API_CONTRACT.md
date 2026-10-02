@@ -486,6 +486,19 @@ Example completed transaction:
 
 ### 3.4 Buyer & Transactions (`api/buyer/` - Owner: Tanvir)
 
+Buyer dashboard `stats.total_spent` and `stats.money_saved` are `null` with an
+`amounts_note` explaining availability. The schema has no transaction-time price
+or retail comparison price; mutable listing prices must not imply historical
+spending or savings. Counts remain numeric. Seller request `can_decline` is true
+for both pending and accepted requests, matching the existing action endpoint.
+
+Dashboard recommendations include `seller_id`. Request status filters reject
+unsupported/non-string values with 422. Wishlist actions accept only add, remove,
+or toggle and serialize writes using the listing row lock; the response retains
+the existing `is_wishlisted` and `wishlist_count` fields. Reviews accept integer
+ratings from 1 through 5, serialize duplicate submissions on the purchase row,
+and seller-review lookup returns 404 for users who are not sellers.
+
 | Method         | Endpoint                                | Access         | Description                                                                                                       |
 | :------------- | :-------------------------------------- | :------------- | :---------------------------------------------------------------------------------------------------------------- |
 | `GET`          | `/api/buyer/dashboard.php`              | Buyer          | Buyer stats (wishlist count, active requests, completed purchases, money saved), recommendations, recent requests |
