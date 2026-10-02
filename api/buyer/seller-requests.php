@@ -93,7 +93,7 @@ try {
             'note'             => $req['note'],
             'status'           => $req['status'],
             'can_accept'       => ($req['status'] === 'pending' && $req['listing_status'] === 'available'),
-            'can_decline'      => ($req['status'] === 'pending'),
+            'can_decline'      => in_array($req['status'], ['pending', 'accepted'], true),
             'can_complete'     => ($req['status'] === 'accepted'),
             'completed_at'     => $req['completed_at'],
             'created_at'       => $req['created_at'],
