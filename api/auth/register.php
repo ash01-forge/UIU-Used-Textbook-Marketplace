@@ -53,6 +53,8 @@ if ($email === '') {
     $errors['email'] = 'Please enter a valid email address.';
 } elseif (mb_strlen($email) > 150) {
     $errors['email'] = 'Email address is too long.';
+} elseif (!preg_match('/@(?:[a-z0-9-]+\.)*uiu\.ac\.bd\z/i', $email)) {
+    $errors['email'] = 'Please use your UIU email address.';
 }
 
 $password = $body['password'] ?? '';

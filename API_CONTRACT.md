@@ -97,7 +97,7 @@ Below is the agreed endpoint contract to guide individual module development:
 
 - `role` must be strictly `"buyer"` or `"seller"`. Supplying `"admin"` yields HTTP 422.
 - `password` must be at least 8 characters.
-- `email` must be unique in `users` table.
+- `email` must be unique in `users` table and belong to `uiu.ac.bd` or one of its subdomains (for example, `bscse.uiu.ac.bd`). Unrelated domains and suffix lookalikes are rejected with HTTP 422.
 
 #### Registration Success Response (201 Created):
 

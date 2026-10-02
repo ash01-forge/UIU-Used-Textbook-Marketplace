@@ -61,26 +61,30 @@ if (!empty($errors)) {
 $db = getDbConnection();
 
 try {
+    $db->beginTransaction();
     // 1. Verify purchase request exists and belongs to the buyer
     $stmtPR = $db->prepare('
         SELECT id, listing_id, buyer_id, seller_id, status 
         FROM purchase_requests 
-        WHERE id = ?
+        WHERE id = ? FOR UPDATE
     ');
     $stmtPR->execute([$requestId]);
     $pr = $stmtPR->fetch();
 
     if (!$pr) {
+        $db->rollBack();
         sendErrorResponse('Purchase request not found.', 404);
     }
 
     // Ownership check: only the buyer of the request can submit a review
     if ((int) $pr['buyer_id'] !== $buyerId) {
+        $db->rollBack();
         sendErrorResponse('Access forbidden. You can only review your own purchases.', 403);
     }
 
     // Eligibility check: purchase must be completed
     if ($pr['status'] !== 'completed') {
+        $db->rollBack();
         sendErrorResponse(
             'Cannot submit review. Purchase request is not completed (current status: "' . $pr['status'] . '").',
             422,
@@ -92,6 +96,7 @@ try {
     $stmtCheck = $db->prepare('SELECT id FROM reviews WHERE purchase_request_id = ?');
     $stmtCheck->execute([$requestId]);
     if ($stmtCheck->fetch()) {
+        $db->rollBack();
         sendErrorResponse('You have already submitted a review for this purchase.', 422, [
             'purchase_request_id' => 'Duplicate review. Each completed purchase can only be reviewed once.'
         ]);
@@ -114,6 +119,7 @@ try {
     ');
     $stmtInsert->execute([$requestId, $listingId, $buyerId, $sellerId, $rating, $comment]);
     $newReviewId = (int) $db->lastInsertId();
+    $db->commit();
 
     sendSuccessResponse('Review submitted successfully! Thank you for helping the UIU student community.', [
         'review' => [
@@ -128,7 +134,10 @@ try {
         ]
     ], 201);
 
-} catch (PDOException $e) {
+} catch (Throwable $e) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
     error_log('Review creation error: ' . $e->getMessage());
     sendErrorResponse('An error occurred while submitting the review.', 500);
 }

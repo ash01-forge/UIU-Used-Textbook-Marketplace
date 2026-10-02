@@ -47,7 +47,7 @@ http://localhost/UIU-Used-Textbook-Marketplace/
      ```
      C:\xampp\htdocs\UIU-Used-Textbook-Marketplace\database\migrations\001_align_to_target_schema.sql
      ```
-5. For either a fresh install or a migrated install, import `database/migrations/002_category_relationship_columns.sql` if Admin category management is needed. This adds nullable relationship columns without deleting or replacing existing values. Do not rerun migration 001 on a fresh install.
+5. The current fresh-install `bookbridge.sql` includes the user department and category relationship columns. Older installations missing those columns need `database/migrations/002_category_relationship_columns.sql` before registration or category management. This additive migration preserves existing values. Do not rerun migration 001 on a fresh install.
 
 ### Option B: Using MySQL Command Line
 
@@ -127,12 +127,12 @@ Run Apache and MySQL, then open the project through `http://localhost/UIU-Used-T
 
 - Sign in from the main marketplace or `seller-login.html`; the server session and returned role determine the destination.
 - Use the root app's **Admin Portal** route to sign in as an administrator. The server-returned role sends authorized admins to `admin-dashboard.html`; direct visits to that page require a valid admin session.
-- Create buyer or seller accounts at `register.html`. Admin self-registration is not available.
+- Create buyer or seller accounts at `register.html` with an email at `uiu.ac.bd` or a subdomain such as `bscse.uiu.ac.bd`. Other domains and admin self-registration are rejected.
 - Buyer, seller, and admin pages restore the session from `api/auth/me.php`, display the server's account name, and provide a server-backed sign-out action. Guests are sent to sign-in; a buyer or seller cannot open the admin page.
 - Admin dashboard counts, listing moderation, category management, and completed-sales reports use the admin APIs. Revenue is unavailable because completed purchases do not store transaction-time prices.
 - Buyer dashboard metrics and recommendations, saved listings, purchase requests and cancellations, eligible reviews, messages, seller listings and moderation feedback, buyer request actions, seller reviews, and sales-history rows are loaded from their existing APIs. Revenue is not calculated from current listing prices when no sale-time snapshot exists.
 - Guest browse, search, department/subject/category/type/condition/price filters, sorting, pagination and public listing details use the read-only APIs under `api/marketplace/`. Buyer purchase actions remain session- and role-protected.
-- Fresh `bookbridge.sql` installs do not include the optional category `department`/`subject` relationship columns used by Admin category CRUD. Apply migration 002 when that functionality is required; it is additive and is not run automatically.
+- Fresh `bookbridge.sql` installs include the category `department`/`subject` fields and `users.department`; migration 002 is only needed for older installations missing them and is not run automatically.
 - If PHP or an API is unavailable, connected screens show an error state and do not substitute fake API success or counts.
 
 Buyer savings are labeled estimated because the dashboard derives them from current listing prices. Seller sales history omits a sale-price column because transaction-time prices are not stored. Admin user-management actions are not part of the current API contract.
@@ -169,3 +169,5 @@ The admin suite is CLI-only. It creates uniquely tagged temporary admin/buyer/se
 - **Data Preservation**: Baseline demo users (IDs 1, 2, 3) and existing database listings/categories are strictly preserved and never modified or deleted.
 
 The admin endpoint behavior and schema limitations are documented in `API_CONTRACT.md` under **Admin Management**. No user-management endpoint is included because no user operations are defined by the current contract.
+
+Run the release-readiness regression suite with `C:\xampp\php\php.exe tests\release_readiness_test.php`. It requires permission to create/drop a temporary database. It verifies fresh schema compatibility, seed passwords, UIU email validation, and concurrent submissions through the actual review endpoint code. Its uniquely named test database is removed afterwards; it does not change application accounts, run application migrations, or reset application tables.

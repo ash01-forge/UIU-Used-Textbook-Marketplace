@@ -4,8 +4,8 @@ This folder contains numbered SQL migration scripts for the BookBridge marketpla
 
 > [!CAUTION]
 > **Do not run migration 001 after a fresh install.** It is only for upgrading the legacy backup schema.
-> Migration 002 is additive and is needed on fresh installs as well as upgraded installs
-> to provide optional department/subject relationship columns used by category management.
+> The current fresh `bookbridge.sql` already includes user department and category relationship columns.
+> Older installations missing those columns need additive migration 002 before registration or category management.
 > See [TEAM_GUIDE.md](../TEAM_GUIDE.md) §4 for the correct setup path.
 
 ---
@@ -36,13 +36,13 @@ This folder contains numbered SQL migration scripts for the BookBridge marketpla
 2. Select `bookbridge_db` in the left panel.
 3. Click the **Import** tab.
 4. For a legacy backup, apply `001_align_to_target_schema.sql` first if it has not already been applied. Then apply `002_category_relationship_columns.sql` for category CRUD support.
-5. For a fresh `bookbridge.sql` install, do not apply migration 001; apply only `002_category_relationship_columns.sql` when category relationship management is needed.
+5. For a current fresh `bookbridge.sql` install, neither migration is needed. Apply migration 002 only to older installations missing user department or category relationship fields.
 
 ## Execution via Command Line (XAMPP MySQL)
 
 ```bash
 # Legacy schema upgrade only. Never run 001 after importing bookbridge.sql.
 mysql -u root bookbridge_db < "database/migrations/001_align_to_target_schema.sql"
-# Fresh or upgraded schema: optional relationship support for category CRUD.
+# Older schema missing user department or category relationship fields only.
 mysql -u root bookbridge_db < "database/migrations/002_category_relationship_columns.sql"
 ```

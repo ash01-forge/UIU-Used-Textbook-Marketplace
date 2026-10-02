@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS `users` (
   `password_hash` VARCHAR(255) NOT NULL,
   `role` ENUM('buyer', 'seller', 'admin') NOT NULL DEFAULT 'buyer',
   `student_id` VARCHAR(30) NULL,
+  `department` VARCHAR(100) NULL,
   `phone` VARCHAR(20) NULL,
   `avatar_url` VARCHAR(255) NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -43,6 +44,8 @@ CREATE TABLE IF NOT EXISTS `categories` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(100) NOT NULL,
   `type` ENUM('Department', 'Subject') NOT NULL,
+  `department` VARCHAR(100) NULL,
+  `subject` VARCHAR(150) NULL,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY `uq_categories_name_type` (`name`, `type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -180,11 +183,11 @@ CREATE TABLE IF NOT EXISTS `reviews` (
 
 INSERT INTO `users` (`id`, `full_name`, `email`, `password_hash`, `role`, `student_id`, `phone`)
 VALUES
-  (1, 'Admin User', 'admin@uiu.ac.bd', '$2y$10$tZknGf1kK8922pYgO3vNte7f.7bM4G3L.R4B5R2jQ4T3Y6F4M3Z.a', 'admin', '011200001', '01700000000'),
-  (2, 'Rafiul Islam', 'seller@uiu.ac.bd', '$2y$10$tZknGf1kK8922pYgO3vNte7f.7bM4G3L.R4B5R2jQ4T3Y6F4M3Z.a', 'seller', '011211054', '01811111111'),
-  (3, 'Zahir Raihan', 'buyer@uiu.ac.bd', '$2y$10$tZknGf1kK8922pYgO3vNte7f.7bM4G3L.R4B5R2jQ4T3Y6F4M3Z.a', 'buyer', '011211088', '01922222222'),
-  (4, 'Nusrat Jahan', 'nusrat@uiu.ac.bd', '$2y$10$tZknGf1kK8922pYgO3vNte7f.7bM4G3L.R4B5R2jQ4T3Y6F4M3Z.a', 'seller', '011212030', '01733333333'),
-  (5, 'Tanvir Ahmed', 'tanvir@uiu.ac.bd', '$2y$10$tZknGf1kK8922pYgO3vNte7f.7bM4G3L.R4B5R2jQ4T3Y6F4M3Z.a', 'buyer', '011213012', '01644444444')
+  (1, 'Admin User', 'admin@uiu.ac.bd', '$2y$10$QoITxuE.T0Baw91XQLFq2uvvH/jbWYvt9tj8o41sVSMIShkpZgOpa', 'admin', '011200001', '01700000000'),
+  (2, 'Rafiul Islam', 'seller@uiu.ac.bd', '$2y$10$QoITxuE.T0Baw91XQLFq2uvvH/jbWYvt9tj8o41sVSMIShkpZgOpa', 'seller', '011211054', '01811111111'),
+  (3, 'Zahir Raihan', 'buyer@uiu.ac.bd', '$2y$10$QoITxuE.T0Baw91XQLFq2uvvH/jbWYvt9tj8o41sVSMIShkpZgOpa', 'buyer', '011211088', '01922222222'),
+  (4, 'Nusrat Jahan', 'nusrat@uiu.ac.bd', '$2y$10$QoITxuE.T0Baw91XQLFq2uvvH/jbWYvt9tj8o41sVSMIShkpZgOpa', 'seller', '011212030', '01733333333'),
+  (5, 'Tanvir Ahmed', 'tanvir@uiu.ac.bd', '$2y$10$QoITxuE.T0Baw91XQLFq2uvvH/jbWYvt9tj8o41sVSMIShkpZgOpa', 'buyer', '011213012', '01644444444')
 ON DUPLICATE KEY UPDATE `email` = VALUES(`email`);
 
 INSERT INTO `categories` (`id`, `name`, `type`)
