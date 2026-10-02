@@ -50,7 +50,7 @@ try {
 
     $query = $db->prepare(
         "SELECT pr.id AS purchase_request_id, pr.listing_id,
-                l.title AS listing_title,
+                l.title AS listing_title, l.course_code,
                 buyer.full_name AS buyer_name,
                 seller.full_name AS seller_name,
                 pr.completed_at

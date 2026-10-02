@@ -8,6 +8,7 @@
   let csrfToken = null;
   let currentUser = null;
   let authRequestPending = false;
+  let logoutNoticeTimer = null;
 
   function pageUrl(file, query = "") {
     return new URL(`${file}${query}`, projectBase).href;
@@ -74,10 +75,13 @@
     }
 
     const payload = await response.json().catch(() => null);
-    if (!response.ok || payload?.success === false) {
+    if (!response.ok || payload?.success !== true) {
       if (response.status === 401) {
+        const hadSession = Boolean(currentUser);
         currentUser = null;
+        window.__bookBridgeUser = null;
         csrfToken = null;
+        if (hadSession) document.dispatchEvent(new CustomEvent('bookbridge:session', {detail: {user: null}}));
         if (pageRoles()) {
           hideUntilSessionIsChecked();
           window.location.replace(pageUrl("index.html", "?auth=expired"));
@@ -105,7 +109,7 @@
       throw new Error("Authentication service is unavailable. Start XAMPP Apache/MySQL and open this project through localhost.");
     }
     const payload = await response.json().catch(() => null);
-    if (!response.ok || payload?.success === false) {
+    if (!response.ok || payload?.success !== true) {
       throw new Error(payload?.message || `Request failed (HTTP ${response.status}).`);
     }
     return payload;
@@ -118,17 +122,49 @@
   }
 
   function userDestination(user) {
-    if (user.role === "buyer") return "buyer-dashboard.html";
-    if (user.role === "seller") return "seller-dashboard.html";
-    if (user.role === "admin") return "admin-dashboard.html";
-    return null;
+    // Intended destination for all roles is the original integrated SPA on index.html
+    return "index.html";
+  }
+
+  function clearAuthNotice() {
+    clearTimeout(logoutNoticeTimer);
+    logoutNoticeTimer = null;
+    document.getElementById("bookbridge-auth-notice")?.remove();
+    const url = new URL(window.location.href);
+    if (url.searchParams.has("auth")) {
+      url.searchParams.delete("auth");
+      history.replaceState(null, "", url.pathname + url.search + url.hash);
+    }
+  }
+
+  function showLogoutNotice() {
+    // Consume the logout query once so a refresh does not repeat the notice.
+    clearAuthNotice();
+    const notice = document.createElement("div");
+    notice.id = "bookbridge-auth-notice";
+    notice.setAttribute("role", "status");
+    notice.style.cssText = "position:fixed;top:16px;right:16px;z-index:1000;box-sizing:border-box;max-width:calc(100vw - 32px);display:flex;align-items:center;gap:16px;padding:12px 16px;border:1px solid #b3cfe5;border-radius:12px;background:#fff;color:#12304a;box-shadow:0 4px 20px #0a19311a;font:14px/1.5 sans-serif";
+    const dismiss = document.createElement("button");
+    dismiss.type = "button";
+    dismiss.textContent = "×";
+    dismiss.setAttribute("aria-label", "Dismiss sign-out notification");
+    dismiss.style.cssText = "border:0;background:transparent;color:inherit;font-size:22px;line-height:1;padding:4px;cursor:pointer";
+    dismiss.addEventListener("click", clearAuthNotice);
+    notice.append(document.createTextNode("You have been signed out."), dismiss);
+    document.body.append(notice);
+    logoutNoticeTimer = setTimeout(clearAuthNotice, 5000);
   }
 
   function routeUser(user) {
     currentUser = user;
-    const destination = userDestination(user);
-    if (destination) {
-      window.location.assign(pageUrl(destination));
+    clearAuthNotice();
+    const file = window.location.pathname.split("/").pop();
+    const isHome = file === "" || file === "index.html";
+    if (isHome) {
+      window.__bookBridgeUser = user;
+      document.dispatchEvent(new CustomEvent("bookbridge:session", {
+        detail: { user, csrf: csrfToken }
+      }));
       return;
     }
     window.location.assign(pageUrl("index.html"));
@@ -170,7 +206,7 @@
   }
 
   function isReactLoginForm(form) {
-    return Boolean(form.closest("#root") && form.querySelector('input[type="email"]') && form.querySelector('input[type="password"]'));
+    return Boolean(form.closest("#root") && form.querySelector('input[type="email"]') && form.querySelector('input[name="password"], input[type="password"]'));
   }
 
   function addRegistrationLink() {
@@ -344,12 +380,21 @@
     const isAuthPage = file === "seller-login.html" || file === "register.html";
     const isHome = file === "" || file === "index.html";
     configureAdminLogin();
+    // Old public entry links land on the preserved React UI as well.
+    if (["browse.html", "guest-home.html", "listing-details.html"].includes(file)) {
+      keepHidden = true;
+      const query = new URLSearchParams(window.location.search);
+      const id = query.get("id") || query.get("listing_id");
+      window.location.replace(pageUrl("index.html") + (file === "listing-details.html" && id ? "#listing-detail/" + encodeURIComponent(id) : "#marketplace"));
+      return;
+    }
 
     try {
       const result = await requestWithoutCsrf("me.php");
       currentUser = result.data?.user || null;
       csrfToken = result.data?.csrf_token || null;
       if (currentUser) {
+        clearAuthNotice();
         if (expectedRoles && !expectedRoles.includes(currentUser.role)) {
           const destination = userDestination(currentUser);
           keepHidden = true;
@@ -357,8 +402,9 @@
           return;
         }
         if (expectedRoles) {
-          updateDashboardIdentity(currentUser);
-          document.body.removeAttribute("data-auth-checking");
+          const destinations = {"buyer-dashboard.html":"buyer-dashboard","seller-dashboard.html":"seller-dashboard","admin-dashboard.html":"admin-dashboard","add-listing.html":"add-listing","seller-sales.html":"sales-history","messages.html":"chat","purchase-request.html":"purchase-requests"};
+          keepHidden = true;
+          window.location.replace(pageUrl("index.html") + "#" + destinations[file]);
           return;
         }
         if (isAuthPage) {
@@ -366,15 +412,15 @@
           routeUser(currentUser);
           return;
         }
-        if (isHome && currentUser.role !== "admin") {
-          keepHidden = true;
-          routeUser(currentUser);
-          return;
-        }
-        if (isHome && currentUser.role === "admin") {
-          keepHidden = true;
-          window.location.replace(pageUrl("admin-dashboard.html"));
-          return;
+        if (isHome) {
+          // Authenticated user on index.html — let the React SPA handle routing.
+          // Dispatch an event so app.js can pick up the session without polling.
+          window.__bookBridgeUser = currentUser;
+          window.__bookBridgeCsrf = csrfToken;
+          document.dispatchEvent(new CustomEvent('bookbridge:session', {
+            detail: { user: currentUser, csrf: csrfToken }
+          }));
+          // Keep page visible — React will show the right dashboard.
         }
       }
     } catch (error) {
@@ -408,10 +454,10 @@
     }
 
     const query = new URLSearchParams(window.location.search);
-    if (isHome && query.get("auth") === "expired") {
+    if (isHome && !currentUser && query.get("auth") === "expired") {
       showGlobalMessage("Your session has expired. Sign in again to continue.", true);
-    } else if (isHome && query.get("auth") === "logged-out") {
-      showGlobalMessage("You have been signed out.");
+    } else if (isHome && !currentUser && query.get("auth") === "logged-out") {
+      showLogoutNotice();
     }
   }
 
@@ -424,6 +470,11 @@
   const ready = initialize();
   window.BookBridgeAuth = {
     get currentUser() { return currentUser; },
+    setUser(user) {
+      currentUser = user;
+      window.__bookBridgeUser = user;
+      document.dispatchEvent(new CustomEvent('bookbridge:identity', {detail: {user}}));
+    },
     async requireRole(roles) {
       await ready;
       const allowedRoles = Array.isArray(roles) ? roles : [roles];
