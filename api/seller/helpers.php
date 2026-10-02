@@ -149,3 +149,46 @@ if (!function_exists('sellerRequireMethod')) {
         ];
     }
 }
+
+/** Resolve only direct image files inside the listing upload directory. */
+function sellerLocalImagePath(string $url): ?string
+{
+    if (!preg_match('~\Auploads/listings/img_[a-f0-9]+\.(jpg|png|webp)\z~D', $url)) {
+        return null;
+    }
+    $directory = realpath(__DIR__ . '/../../uploads/listings');
+    $path = realpath(__DIR__ . '/../../' . $url);
+    if ($directory === false || $path === false || !is_file($path)
+        || dirname($path) !== $directory) {
+        return null;
+    }
+    return $path;
+}
+
+/** Allow existing own covers or uploads issued to this seller's session. */
+function sellerValidateImageUrl(PDO $db, ?string $url, int $sellerId, ?string $existingUrl = null): void
+{
+    if ($url === null || $url === '') {
+        return;
+    }
+    if (str_starts_with($url, 'uploads/')) {
+        if (sellerLocalImagePath($url) === null) {
+            sendErrorResponse('Invalid or missing uploaded cover image.', 422);
+        }
+        $owned = ($_SESSION['seller_uploads'][$url] ?? null) === $sellerId;
+        if (!$owned && $url !== $existingUrl) {
+            $stmt = $db->prepare('SELECT id FROM listings WHERE seller_id = ? AND image_url = ? LIMIT 1');
+            $stmt->execute([$sellerId, $url]);
+            $owned = (bool) $stmt->fetch();
+        }
+        if (!$owned && $url !== $existingUrl) {
+            sendErrorResponse('This cover image does not belong to your seller account. Upload it again.', 422);
+        }
+        return;
+    }
+    // Preserve remote demo covers without accepting executable URL schemes.
+    if (filter_var($url, FILTER_VALIDATE_URL) === false
+        || !in_array(strtolower((string) parse_url($url, PHP_URL_SCHEME)), ['http', 'https'], true)) {
+        sendErrorResponse('Cover image must be an uploaded image or an HTTP/HTTPS URL.', 422);
+    }
+}

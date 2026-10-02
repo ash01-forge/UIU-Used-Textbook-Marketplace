@@ -34,7 +34,7 @@ if ($fileKey === null) {
 $file = $_FILES[$fileKey];
 
 // Check upload errors
-if (!isset($file['error']) || is_array($file['error'])) {
+if (!is_array($file) || !isset($file['error']) || !is_int($file['error'])) {
     sendErrorResponse('Invalid file upload parameters.', 422);
 }
 
@@ -64,6 +64,15 @@ if ($file['size'] > $maxBytes) {
     ]);
 }
 
+if (!isset($file['tmp_name']) || !is_string($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+    sendErrorResponse('Invalid uploaded image.', 422);
+}
+$actualSize = filesize($file['tmp_name']);
+if ($actualSize === false || $actualSize < 1 || $actualSize > $maxBytes) {
+    sendErrorResponse('Image must be nonempty and no larger than 2 MB.', 422);
+}
+$file['size'] = $actualSize;
+
 // 2. MIME type inspection using finfo (do not trust client extension or Content-Type header)
 $finfo = finfo_open(FILEINFO_MIME_TYPE);
 $mimeType = finfo_file($finfo, $file['tmp_name']);
@@ -81,6 +90,9 @@ if (!array_key_exists($mimeType, $allowedMimeMap)) {
     ]);
 }
 
+if (@getimagesize($file['tmp_name']) === false) {
+    sendErrorResponse('The uploaded file is not a readable image.', 422);
+}
 $extension = $allowedMimeMap[$mimeType];
 
 // 3. Prepare target upload directory
@@ -119,6 +131,7 @@ if (!move_uploaded_file($file['tmp_name'], $destination)) {
 
 // Relative web URL
 $relativeUrl = 'uploads/listings/' . $randomName;
+$_SESSION['seller_uploads'][$relativeUrl] = (int) $user['id'];
 
 sendSuccessResponse('Image uploaded successfully.', [
     'image_url' => $relativeUrl,

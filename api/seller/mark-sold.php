@@ -65,14 +65,13 @@ try {
         ]);
     }
 
-    // PR #8 Fix: Manual mark-sold is blocked while an accepted request exists
-    $reqStmt = $db->prepare("SELECT COUNT(*) FROM purchase_requests WHERE listing_id = ? AND status = 'accepted'");
-    $reqStmt->execute([$listingId]);
-    if ((int) $reqStmt->fetchColumn() > 0) {
+    // Complete an accepted meetup through the shared request action endpoint.
+    // Otherwise marking it sold here prevents that endpoint from completing it.
+    $accepted = $db->prepare("SELECT id FROM purchase_requests WHERE listing_id = ? AND status = 'accepted' LIMIT 1");
+    $accepted->execute([$listingId]);
+    if ($accepted->fetch()) {
         $db->rollBack();
-        sendErrorResponse('Cannot manually mark as sold while an accepted purchase request exists. Please complete or decline the meetup request.', 409, [
-            'purchase_requests' => 'An accepted purchase request is active for this listing.',
-        ]);
+        sendErrorResponse('An accepted purchase request exists. Use Complete meetup in Purchase requests, or decline the request first.', 409);
     }
 
     // Conditional atomic update ensuring previous status was strictly 'available'

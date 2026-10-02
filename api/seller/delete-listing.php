@@ -28,63 +28,56 @@ $listingId = sellerPositiveId($rawId, 'listing_id');
 
 $db = getDbConnection();
 
-// Fetch listing
-$stmt = $db->prepare('SELECT * FROM listings WHERE id = ?');
-$stmt->execute([$listingId]);
-$listing = $stmt->fetch();
-
-if (!$listing) {
-    sendErrorResponse('Listing not found.', 404);
-}
-
-// Ownership verification
-if ((int) $listing['seller_id'] !== $sellerId) {
-    sendErrorResponse('Access forbidden. You do not have permission to delete this listing.', 403);
-}
-
-// 1. Cannot delete sold listings or listings with completed sales
-if ($listing['status'] === 'sold') {
-    sendErrorResponse('Cannot delete a sold listing as it represents a completed campus transaction.', 409, [
-        'status' => 'Sold listings are preserved for sales records.',
-    ]);
-}
-
-$completedStmt = $db->prepare("SELECT COUNT(*) FROM purchase_requests WHERE listing_id = ? AND status = 'completed'");
-$completedStmt->execute([$listingId]);
-if ((int) $completedStmt->fetchColumn() > 0) {
-    sendErrorResponse('Cannot delete a listing associated with completed purchase records.', 409, [
-        'purchase_requests' => 'Completed sales transactions depend on this listing.',
-    ]);
-}
-
-// 2. Cannot delete listings with pending or accepted purchase requests
-$activeStmt = $db->prepare("SELECT COUNT(*) FROM purchase_requests WHERE listing_id = ? AND status IN ('pending', 'accepted')");
-$activeStmt->execute([$listingId]);
-if ((int) $activeStmt->fetchColumn() > 0) {
-    sendErrorResponse('Cannot delete a listing with active purchase requests. Please resolve or decline them first.', 409, [
-        'purchase_requests' => 'Active buyer proposals exist for this listing.',
-    ]);
-}
-
-// 3. Clean up associated local image if any
-$imageUrl = $listing['image_url'] ?? '';
-$deleteImageFile = null;
-if (!empty($imageUrl) && strpos($imageUrl, 'uploads/listings/') === 0) {
-    $projectRoot = realpath(__DIR__ . '/../../');
-    $potentialPath = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $imageUrl);
-    if (file_exists($potentialPath) && is_file($potentialPath)) {
-        $deleteImageFile = $potentialPath;
+// Serialize deletion against listing changes and purchase-request creation.
+try {
+    $db->beginTransaction();
+    $stmt = $db->prepare('SELECT * FROM listings WHERE id = ? FOR UPDATE');
+    $stmt->execute([$listingId]);
+    $listing = $stmt->fetch();
+    if (!$listing) {
+        $db->rollBack();
+        sendErrorResponse('Listing not found.', 404);
     }
+    if ((int) $listing['seller_id'] !== $sellerId) {
+        $db->rollBack();
+        sendErrorResponse('Access forbidden. You do not have permission to delete this listing.', 403);
+    }
+    $requests = $db->prepare("SELECT id FROM purchase_requests WHERE listing_id = ? AND status IN ('pending', 'accepted', 'completed') LIMIT 1");
+    $requests->execute([$listingId]);
+    if ($listing['status'] === 'sold' || $requests->fetch()) {
+        $db->rollBack();
+        sendErrorResponse('Sold listings and listings with active or completed purchase requests cannot be deleted.', 409);
+    }
+    $imageUrl = $listing['image_url'] ?? '';
+    $deleteImageFile = sellerLocalImagePath($imageUrl);
+    $deleteStmt = $db->prepare('DELETE FROM listings WHERE id = ? AND seller_id = ?');
+    $deleteStmt->execute([$listingId, $sellerId]);
+    $db->commit();
+} catch (Throwable $e) {
+    if ($db->inTransaction()) {
+        $db->rollBack();
+    }
+    error_log('Seller listing deletion failed: ' . $e->getMessage());
+    sendErrorResponse('Unable to delete listing. Please try again later.', 500);
 }
 
-// 4. Perform deletion
-$deleteStmt = $db->prepare('DELETE FROM listings WHERE id = ? AND seller_id = ?');
-$deleteStmt->execute([$listingId, $sellerId]);
-
+// Never remove a cover still referenced by another listing. Only generated
+// direct image paths are eligible; traversal and links outside storage are ignored.
+$imageRemoved = false;
 if ($deleteImageFile !== null) {
-    @unlink($deleteImageFile);
+    try {
+        $references = $db->prepare('SELECT id FROM listings WHERE image_url = ? LIMIT 1');
+        $references->execute([$imageUrl]);
+        if (!$references->fetch()) {
+            $imageRemoved = @unlink($deleteImageFile);
+        }
+    } catch (Throwable $e) {
+        // Deletion already committed. Retain the image if references cannot be checked.
+        error_log('Seller cover cleanup failed: ' . $e->getMessage());
+    }
 }
 
 sendSuccessResponse('Listing deleted successfully.', [
     'deleted_listing_id' => $listingId,
+    'image_removed' => $imageRemoved,
 ]);
