@@ -151,7 +151,52 @@
     return {chartTitle:'Completed sales',data:Object.entries(grouped).sort().map(([label,sales])=>({label,sales})),kpis:{sales:report?.summary?.completed_sales_count??'Unavailable',revenue:'Unavailable',avg:'Unavailable',users:'Unavailable'},changes:{sales:'',revenue:'',avg:'',users:''},comparison:'',note:report?.revenue_note||'Unavailable: completed transactions have no stored sale price.',transactions:(report?.transactions||[]).map(row=>({id:row.purchase_request_id,book:row.listing_title,buyer:row.buyer_name,seller:row.seller_name,courseCode:row.course_code||'Unavailable',price:'Unavailable',date:row.completed_at}))};
   }
   function extraLinks(React,role,navigate) {return ['buyer','seller'].includes(role)?React.createElement(React.Fragment,null,...[['purchase-requests','Purchase Requests'],['chat','Messages'],['profile','My Profile']].map(([view,label])=>React.createElement('button',{key:view,type:'button',className:'bb-menu-link',onClick:()=>navigate(view)},label))):null;}
-  window.BookBridgeUI = {listing, sales, perform, useData, upload, notify, date, imageUrl, usePreview, Requests, Profile, useChat, useMarketplace, useReport, extraLinks,
+  function EditListing({React, listing:row, taxonomy, navigate, onSaveListing}) {
+    const h=React.createElement;
+    const [form,setForm]=React.useState({title:row.title,author:row.author||'',edition:row.edition||'',department:row.department,
+      course_code:row.courseCode,subject:row.subject||'',item_type:row.type,condition_type:row.condition,price:String(row.price),description:row.description});
+    const [file,setFile]=React.useState(null),[busy,setBusy]=React.useState(false),lock=React.useRef(false),uploaded=React.useRef(null);
+    const preview=usePreview(React,file,row.image);
+    const change=(key,value)=>setForm(current=>({...current,[key]:value}));
+    async function save(event) {
+      event.preventDefault();if(lock.current)return;lock.current=true;setBusy(true);
+      try {
+        const body={listing_id:Number(row.id),...form,price:Number(form.price)};
+        for(const key of ['title','course_code','subject','description'])body[key]=body[key].trim();
+        for(const key of ['author','edition'])body[key]=body[key].trim()||null;
+        if(file) {
+          // Reuse this upload if saving fails, instead of uploading it again on retry.
+          if(uploaded.current?.file!==file)uploaded.current={file,url:await upload(file)};
+          body.image_url=uploaded.current.url;
+        }
+        const result=await API().editListing(body);
+        onSaveListing(listing(result.data.listing));
+        notify(result.data.listing.status==='pending_approval'?'Listing updated and resubmitted for admin approval.':'Listing updated.');
+        navigate('manage-listings');
+      }catch(error){notify(error.message,true);}finally{lock.current=false;setBusy(false);}
+    }
+    const field=(key,label,options={})=>h('label',{key},label,h('input',{className:'input-field',value:form[key],disabled:busy,
+      onChange:event=>change(key,event.target.value),...options}));
+    const select=(key,label,values)=>h('label',{key},label,h('select',{className:'input-field',value:form[key],disabled:busy,
+      onChange:event=>change(key,event.target.value)},values.map(value=>h('option',{key:value,value},value))));
+    return h('section',{className:'bb-panel',style:{maxWidth:760,margin:'32px auto',padding:'0 24px 40px'}},
+      h('button',{type:'button',className:'btn-secondary',disabled:busy,onClick:()=>navigate('manage-listings')},'Back to listings'),
+      h('h1',null,'Edit Listing'),h('p',null,'Update your listing details'),
+      h('form',{className:'card bb-form',onSubmit:save,style:{padding:24}},
+        h('fieldset',{disabled:busy,style:{border:0,padding:0,margin:0}},
+          h('legend',null,'Cover image'),h('img',{src:preview,alt:'Listing cover preview',style:{width:160,height:180,objectFit:'contain',display:'block',margin:'12px 0'}}),
+          h('label',null,'Replace cover image (optional)',h('input',{type:'file',accept:'image/jpeg,image/png,image/webp',onChange:event=>setFile(event.target.files?.[0]||null)})),
+          h('p',null,'JPG, PNG or WebP, up to 2 MB. Leave empty to keep the current cover.')),
+        field('title','Title *',{required:true,maxLength:200}),field('author','Author',{maxLength:150}),field('edition','Edition',{maxLength:50}),
+        select('department','Department *',[...new Set([form.department,...(taxonomy?.departments||[]).map(item=>item.name)])].filter(Boolean)),
+        field('course_code','Course Code *',{required:true}),field('subject','Subject *',{required:true,maxLength:100}),
+        select('item_type','Type',['Textbook','Notes','Lab Manual']),select('condition_type','Condition',['New','Like New','Good','Fair','Poor']),
+        field('price','Price (৳) *',{type:'number',required:true,min:'0.01',max:'999999.99',step:'0.01'}),
+        h('label',null,'Description *',h('textarea',{className:'input-field',required:true,minLength:5,rows:4,value:form.description,disabled:busy,onChange:event=>change('description',event.target.value)})),
+        h('div',{className:'bb-actions'},h('button',{type:'button',className:'btn-secondary',disabled:busy,onClick:()=>navigate('manage-listings')},'Cancel'),
+          h('button',{type:'submit',className:'btn-primary',disabled:busy},busy?'Saving…':'Save Changes'))));
+  }
+  window.BookBridgeUI = {listing, sales, perform, useData, upload, notify, date, imageUrl, usePreview, Requests, Profile, EditListing, useChat, useMarketplace, useReport, extraLinks,
     render(React, C) {
       const h = React.createElement;
       const [user, setUser] = React.useState(null);
@@ -272,7 +317,7 @@
         case 'listing-submitted':page=h(C.Submitted,props);break;
         case 'manage-listings':page=h(C.Manage,{...props,sellerListings:ownRows,onMarkSold:mark,onEditListing:row=>select(row,'edit-listing'),onDeleteListing:remove});break;
         case 'sales-history':page=h(C.Sales,{...props,sellerSales:salesRows});break;
-        case 'edit-listing':page=selected?h(C.EditListing,{...props,key:selected.id,listing:selected,onSaveListing:()=>refresh()}):h('p',{className:'bb-loading'},'Select one of your listings first.');break;
+        case 'edit-listing':page=selected?h(EditListing,{React,...props,key:selected.id,listing:selected,onSaveListing:()=>refresh()}):h('p',{className:'bb-loading'},'Select one of your listings first.');break;
         case 'admin-dashboard':page=h(C.Admin,{...props,allListings:pendingRows});break;
         case 'pending-listings':page=h(C.Pending,{...props,allListings:pendingRows,onSelectListing:row=>select(row,'review-listing')});break;
         case 'review-listing':page=h(C.Review,{...props,selectedListing:selected,onApprove:id=>moderate(id,'approve'),onRejectListing:(id,feedback)=>moderate(id,'reject',feedback),onRequestChanges:(id,feedback)=>moderate(id,'changes_requested',feedback)});break;

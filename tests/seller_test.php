@@ -148,6 +148,9 @@ try {
     $loginBuyer = loginUser($buyerEmail, $buyerJar);
     $csrfBuyer  = $loginBuyer['json']['data']['csrf_token'] ?? '';
     check($loginBuyer['status'] === 200, 'Buyer login succeeds');
+    $loginAdmin = loginUser($adminEmail, $adminJar);
+    $csrfAdmin = $loginAdmin['json']['data']['csrf_token'] ?? '';
+    check($loginAdmin['status'] === 200 && !empty($csrfAdmin), 'Admin fixture login succeeds');
 
     // -----------------------------------------------------------------
     // Section 1: Authentication & Role Guards
@@ -307,8 +310,10 @@ try {
     ], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
     check($badMarkSold['status'] === 422, 'Pending listing cannot be marked sold (422)');
 
-    // Simulate Admin approving listing1 -> becomes available
-    $db->prepare("UPDATE listings SET status = 'available', reviewed_by = ?, reviewed_at = NOW() WHERE id = ?")->execute([$adminId, $listing1Id]);
+    $approval = apiRequest("{$baseUrl}/admin/review-listing.php", 'POST', [
+        'listing_id' => $listing1Id, 'action' => 'approve',
+    ], ['X-CSRF-Token: ' . $csrfAdmin], $adminJar);
+    check($approval['status'] === 200, 'Admin approves listing through real moderation API');
 
     // Create an accepted purchase request for listing1
     $prStmt = $db->prepare("INSERT INTO purchase_requests (listing_id, buyer_id, seller_id, meeting_location, preferred_date, payment_method, note, status, created_at, updated_at) VALUES (?, ?, ?, 'UIU Library', CURDATE(), 'cash_on_meet', 'Looking forward to meeting.', 'accepted', NOW(), NOW())");
@@ -316,22 +321,30 @@ try {
     $prId = (int) $db->lastInsertId();
     $purchaseIds[] = $prId;
 
-    // Mark available listing as sold
+    // Accepted meetups must be completed through request actions, not manual mark-sold.
     $markSold = apiRequest("{$baseUrl}/seller/mark-sold.php", 'POST', [
         'id' => $listing1Id,
     ], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
-    check($markSold['status'] === 200, 'Available listing marked as sold (200)');
+    check($markSold['status'] === 409, 'Accepted request blocks manual mark-sold (409)');
 
-    // Verify database state: listing is sold
+    // A blocked action must preserve the listing and request.
     $checkListing = $db->prepare('SELECT status FROM listings WHERE id = ?');
     $checkListing->execute([$listing1Id]);
-    check($checkListing->fetchColumn() === 'sold', 'Listing status transitioned to sold');
+    check($checkListing->fetchColumn() === 'available', 'Blocked mark-sold leaves listing available');
 
     // Verify database state: purchase request was NOT mutated by mark-sold (respects Tanvir module ownership)
     $checkPr = $db->prepare('SELECT status, completed_at FROM purchase_requests WHERE id = ?');
     $checkPr->execute([$prId]);
     $prRow = $checkPr->fetch();
     check(($prRow['status'] ?? '') === 'accepted' && empty($prRow['completed_at']), 'Marking listing sold does NOT complete or mutate purchase requests (Tanvir module ownership)');
+
+    $requests = apiRequest("{$baseUrl}/buyer/seller-requests.php", 'GET', null, [], $seller1Jar);
+    $acceptedRows = array_values(array_filter($requests['json']['data']['requests'] ?? [], fn($row) => $row['id'] === $prId));
+    check(($acceptedRows[0]['can_decline'] ?? false) === true, 'Accepted request exposes can_decline capability');
+    $decline = apiRequest("{$baseUrl}/buyer/seller-request-action.php", 'POST', ['request_id' => $prId, 'action' => 'decline'], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
+    check($decline['status'] === 200, 'Seller can decline an accepted request');
+    $markSold = apiRequest("{$baseUrl}/seller/mark-sold.php", 'POST', ['id' => $listing1Id], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
+    check($markSold['status'] === 200, 'Manual mark-sold succeeds after declining accepted request');
 
     // Attempting to mark an already sold listing as sold again -> 409 Conflict
     $repeatSold = apiRequest("{$baseUrl}/seller/mark-sold.php", 'POST', [
@@ -362,9 +375,20 @@ try {
     ], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
     check($repeatUnsold['status'] === 409, 'Marking non-sold listing as unsold returns 409 Conflict');
 
-    // Re-mark as sold
-    $reSold = apiRequest("{$baseUrl}/seller/mark-sold.php", 'POST', ['id' => $listing1Id], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
-    check($reSold['status'] === 200, 'Re-marked as sold');
+    $newRequest = apiRequest("{$baseUrl}/buyer/purchase-request.php", 'POST', [
+        'listing_id' => $listing1Id, 'meeting_location' => 'UIU Library',
+        'preferred_date' => date('Y-m-d', strtotime('+1 day')), 'payment_method' => 'cash_on_meet',
+    ], ['X-CSRF-Token: ' . $csrfBuyer], $buyerJar);
+    check($newRequest['status'] === 201, 'Buyer creates purchase request through real API');
+    $completePrId = (int) ($newRequest['json']['data']['request']['id'] ?? 0);
+    $purchaseIds[] = $completePrId;
+    $accept = apiRequest("{$baseUrl}/buyer/seller-request-action.php", 'POST', ['request_id' => $completePrId, 'action' => 'accept'], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
+    check($accept['status'] === 200, 'Seller accepts buyer request');
+    $complete = apiRequest("{$baseUrl}/buyer/seller-request-action.php", 'POST', ['request_id' => $completePrId, 'action' => 'complete'], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
+    check($complete['status'] === 200 && ($complete['json']['data']['listing_status'] ?? '') === 'sold', 'Complete meetup sells listing through real API');
+    $checkPr->execute([$completePrId]);
+    $completed = $checkPr->fetch();
+    check(($completed['status'] ?? '') === 'completed' && !empty($completed['completed_at']), 'Complete meetup records completed request and timestamp');
 
     // -----------------------------------------------------------------
     // Section 8: Delete Behavior & Related Records Handling
@@ -424,8 +448,7 @@ try {
     // Section 9: Sales History & Dashboard Metrics
     // -----------------------------------------------------------------
     echo "\n-- Section 9: Sales History & Dashboard Metrics --\n";
-    // Separately create a completed purchase request fixture for listing1 to test sales-history read
-    $db->prepare("UPDATE purchase_requests SET status = 'completed', completed_at = NOW() WHERE id = ?")->execute([$prId]);
+    // History now uses the real completed meetup from Section 7.
 
     $salesHistory = apiRequest("{$baseUrl}/seller/sales-history.php", 'GET', null, [], $seller1Jar);
     check($salesHistory['status'] === 200, 'Seller sales history retrieved (200)');
@@ -440,6 +463,10 @@ try {
     check(($stats['sold_listings'] ?? 0) >= 1, 'Dashboard reflects sold listing count');
     check(array_key_exists('revenue', $stats) && $stats['revenue'] === null, 'Dashboard revenue is null per contract note');
     check(!empty($stats['revenue_note']), 'Dashboard includes explanatory revenue note');
+    $relistCompleted = apiRequest("{$baseUrl}/seller/mark-unsold.php", 'POST', ['id' => $listing1Id], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
+    check($relistCompleted['status'] === 200, 'Completed-sale listing can be relisted');
+    $afterRelist = apiRequest("{$baseUrl}/seller/sales-history.php", 'GET', null, [], $seller1Jar);
+    check(in_array($completePrId, array_column($afterRelist['json']['data']['sales'] ?? [], 'purchase_request_id'), true), 'Relisting preserves completed sale in history');
 
     // -----------------------------------------------------------------
     // Section 10: Secure Image Upload Handling
@@ -464,6 +491,10 @@ try {
         $fullPath = realpath(__DIR__ . '/../') . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $uploadedUrl);
         $uploadedFiles[] = $fullPath;
         check(file_exists($fullPath), 'Uploaded file exists on filesystem');
+        $coverEdit = apiRequest("{$baseUrl}/seller/edit-listing.php", 'PUT', ['id' => $listing1Id, 'image_url' => $uploadedUrl], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
+        check($coverEdit['status'] === 200 && ($coverEdit['json']['data']['listing']['image_url'] ?? '') === $uploadedUrl, 'Edit listing saves uploaded cover image');
+        $keepCover = apiRequest("{$baseUrl}/seller/edit-listing.php", 'PUT', ['id' => $listing1Id, 'title' => "Cover preserved {$tag}"], ['X-CSRF-Token: ' . $csrfSel1], $seller1Jar);
+        check($keepCover['status'] === 200 && ($keepCover['json']['data']['listing']['image_url'] ?? '') === $uploadedUrl, 'Editing details without image_url preserves existing cover');
     }
 
     // 10b. Invalid file upload (fake PHP executable)
@@ -498,6 +529,7 @@ try {
             }
             echo "  Cleaned up fixture DB records successfully.\n";
         } catch (Throwable $e) {
+            $fail++;
             echo "  Cleanup error: " . $e->getMessage() . "\n";
         }
     }
